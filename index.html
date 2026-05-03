@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Egyptian Chess — Pharaoh's Game</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="game-wrap">
+
+  <header class="game-header">
+    <h1>⚱ PHARAOH'S CHESS ⚱</h1>
+    <p class="sub">The Ancient Game of Strategy — Blessed by Ra</p>
+  </header>
+
+  <div class="game-layout">
+
+    <!-- Black panel -->
+    <aside class="panel" id="black-panel">
+      <div class="panel-name">
+        <span>☽ UPPER EGYPT</span>
+        BLACK
+      </div>
+      <div class="captured" id="black-captured"></div>
+      <button class="ankh-btn" id="black-ankh" disabled>☥ Use Ankh</button>
+    </aside>
+
+    <!-- Board -->
+    <div class="board-wrap">
+      <div class="file-labels">
+        <span>a</span><span>b</span><span>c</span><span>d</span>
+        <span>e</span><span>f</span><span>g</span><span>h</span>
+      </div>
+      <div class="board-row">
+        <div class="rank-labels">
+          <span>8</span><span>7</span><span>6</span><span>5</span>
+          <span>4</span><span>3</span><span>2</span><span>1</span>
+        </div>
+        <div id="board"></div>
+        <div class="rank-labels">
+          <span>8</span><span>7</span><span>6</span><span>5</span>
+          <span>4</span><span>3</span><span>2</span><span>1</span>
+        </div>
+      </div>
+      <div class="file-labels">
+        <span>a</span><span>b</span><span>c</span><span>d</span>
+        <span>e</span><span>f</span><span>g</span><span>h</span>
+      </div>
+    </div>
+
+    <!-- White panel -->
+    <aside class="panel" id="white-panel">
+      <div class="panel-name">
+        <span>☀ LOWER EGYPT</span>
+        WHITE
+      </div>
+      <div class="captured" id="white-captured"></div>
+      <button class="ankh-btn" id="white-ankh" disabled>☥ Use Ankh</button>
+    </aside>
+
+  </div><!-- /game-layout -->
+
+  <!-- Status -->
+  <div class="status-bar">
+    <span id="status-text" class="white">White to move — Lower Egypt ☀</span>
+  </div>
+
+  <!-- Bottom row: new game + move log -->
+  <div class="bottom-row">
+    <button id="new-game-btn">⟳ NEW GAME</button>
+    <div class="log-box">
+      <h4>SACRED SCROLL</h4>
+      <div id="move-log"></div>
+    </div>
+  </div>
+
+  <!-- Rules -->
+  <div class="rules-box">
+    <h4>EGYPTIAN RULES</h4>
+    <div>
+      <b>Pharaoh</b> = King · <b>Vizier</b> = Queen · <b>Chariot</b> = Rook ·
+      <b>Priest</b> = Bishop · <b>Soldier</b> = Pawn
+    </div>
+    <div>
+      <b>Sphinx</b> (Knight+): moves as a Knight AND can slide 1–2 squares diagonally.
+      Cannot jump over pieces for diagonal slides.
+    </div>
+    <div>
+      <b>☥ Ankh Resurrection</b>: Once per game, use your turn to place your
+      most recently captured piece onto any empty square in your back two ranks.
+    </div>
+    <div>
+      <b>Pyramid Squares</b> (d4–e5, glowing centre): thematic sacred zone — control
+      them for positional advantage.
+    </div>
+    <div>No castling. Standard en passant applies.</div>
+  </div>
+
+</div><!-- /game-wrap -->
+
+<!-- Promotion dialog -->
+<div class="dialog-overlay hidden" id="promo-dialog">
+  <div class="dialog-box">
+    <h3>☥ CHOOSE PROMOTION</h3>
+    <div class="promo-btns" id="promo-pieces"></div>
+  </div>
+</div>
+
+<script src="js/pieces.js"></script>
+<script src="js/game.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>
