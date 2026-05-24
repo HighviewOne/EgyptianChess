@@ -1,0 +1,63 @@
+name: Bug Report
+description: Something is broken or behaving incorrectly
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Thanks for reporting a bug.** Please fill out the sections below so we can reproduce and fix the issue.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+      placeholder: "Example: When I try to use Ankh Resurrection after capturing two pieces, the button stays disabled."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: How can we make the bug happen?
+      placeholder: |
+        1. Start a new game
+        2. Move white pawn to e4
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      placeholder: "The Ankh button should become active on my turn."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser
+      multiple: true
+      options:
+        - Chrome / Chromium
+        - Firefox
+        - Safari
+        - Edge
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      placeholder: "e.g. Windows 11, macOS 15, Ubuntu 24.04"
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional context
+      description: Console errors, screenshots, or anything else helpful.

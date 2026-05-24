@@ -1,0 +1,51 @@
+name: Feature Request
+description: Suggest a new rule, mechanic, or UI improvement
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Got an idea?** Describe what you'd like to see added or changed.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Game rules / mechanics
+        - UI / visuals
+        - Sound / music
+        - Accessibility
+        - Performance
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Feature summary
+      description: What would you like added or changed?
+      placeholder: "Example: Add a variant where the Sphinx can also jump over friendly pieces."
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Why would this improve the game?
+      description: Explain the player experience benefit.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Did you think of other ways to solve this? What did you rule out?
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional context
+      description: Reference links, mockups, or anything else helpful.
