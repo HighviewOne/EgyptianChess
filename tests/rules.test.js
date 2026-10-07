@@ -8,14 +8,14 @@ const vm = require('node:vm');
 function load() {
   const ctx = { window: {} };
   vm.createContext(ctx);
-  const src = ['engine.js', 'game.js']
+  const src = ['engine.js', 'game.js', 'ai.js']
     .map(f => fs.readFileSync(path.join(__dirname, '..', 'js', f), 'utf8'))
     .join('\n');
   vm.runInContext(src + '\nthis.GameState = GameState;', ctx);
-  return { E: ctx.window.PharaohEngine, GameState: ctx.GameState };
+  return { E: ctx.window.PharaohEngine, AI: ctx.window.PharaohAI, GameState: ctx.GameState };
 }
 
-const { E, GameState } = load();
+const { E, AI, GameState } = load();
 const sq = (s) => E.rcToIdx(8 - Number(s[1]), 'abcdefgh'.indexOf(s[0]));
 
 function play(game, ...moves) {
@@ -212,4 +212,88 @@ test('invalid Ankh placements report why', () => {
   const r = g.clickSquare(sq('e2'));
   assert.strictEqual(r.action, 'ankh_placed');
   assert.strictEqual(g.history.at(-1).notation, '☥e2');
+});
+
+test('fast attack detection matches move generation on random positions', () => {
+  // The original definition: any enemy pseudo-move lands on the square
+  const slow = (square, byColor, board) => board.some((p, i) =>
+    p?.color === byColor && E.getRawMoves(i, board, null).some(m => m.to === square));
+  const types = Object.values(E.PIECES);
+  let seed = 12345;
+  const rand = (n) => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed % n; };
+  for (let t = 0; t < 3000; t++) {
+    const board = new Array(64).fill(null);
+    const count = 2 + rand(20);
+    for (let k = 0; k < count; k++) {
+      board[rand(64)] = { type: types[rand(types.length)], color: rand(2) ? 'white' : 'black' };
+    }
+    for (let sqi = 0; sqi < 64; sqi++) {
+      if (!board[sqi]) continue;
+      const by = board[sqi].color === 'white' ? 'black' : 'white';
+      assert.strictEqual(E.isSquareAttacked(sqi, by, board), slow(sqi, by, board),
+        `square ${E.squareName(sqi)} on ${JSON.stringify(board)}`);
+    }
+  }
+});
+
+// ── Computer opponent ──────────────────────────────────────────────────────
+
+const backRank = [
+  ['h1', 'pharaoh', 'white'], ['g2', 'soldier', 'white'], ['h2', 'soldier', 'white'],
+  ['b8', 'chariot', 'black'], ['a8', 'pharaoh', 'black'], ['a7', 'soldier', 'black'], ['c7', 'soldier', 'black'],
+];
+
+test('computer finds a back-rank mate in one', () => {
+  const g = emptyGame(backRank, 'black');
+  const t = AI.bestTurn(g, 2);
+  assert.strictEqual(t.kind, 'move');
+  assert.strictEqual(E.squareName(t.from) + E.squareName(t.move.to), 'b8b1');
+});
+
+test('computer takes a free Vizier', () => {
+  const g = emptyGame([
+    ['e1', 'pharaoh', 'white'], ['c3', 'sphinx', 'white'],
+    ['e8', 'pharaoh', 'black'], ['d5', 'vizier', 'black'],
+  ]);
+  const t = AI.bestTurn(g, 2);
+  assert.strictEqual(E.squareName(t.from) + E.squareName(t.move.to), 'c3d5');
+});
+
+test('computer resurrects with the Ankh when it is the only escape', () => {
+  const g = emptyGame([
+    ['h1', 'pharaoh', 'white'], ['g2', 'soldier', 'white'], ['h2', 'soldier', 'white'],
+    ['a1', 'chariot', 'black'], ['a8', 'pharaoh', 'black'],
+  ]);
+  g.capturedBy.black.push({ type: 'priest', color: 'white' });
+  g._updateStatus();
+  const t = AI.bestTurn(g, 2);
+  assert.strictEqual(t.kind, 'ankh');
+  assert.ok(['b1', 'c1', 'd1', 'e1', 'f1', 'g1'].includes(E.squareName(t.to)));
+});
+
+test('computer search state applies turns like the real game', () => {
+  const g = new GameState();
+  play(g, 'e2-e4', 'a7-a6', 'e4-e5', 'd7-d5');
+  const state = AI.fromGame(g);
+  const ep = AI.generate(state).find(t => t.move?.special === 'enPassant');
+  const next = AI.apply(state, ep);
+  play(g, 'e5-d6');
+  assert.strictEqual(JSON.stringify(next.board), JSON.stringify(g.board));
+  assert.strictEqual(JSON.stringify(next.lost.black), '["soldier"]');
+});
+
+test('computer knows about repetition: a lost side takes the threefold draw', () => {
+  // White is a Vizier up; Black can repeat the start position for the third time with h7-h8
+  const g = emptyGame([
+    ['e1', 'pharaoh', 'white'], ['d1', 'vizier', 'white'], ['a1', 'chariot', 'white'],
+    ['e8', 'pharaoh', 'black'], ['h8', 'chariot', 'black'],
+  ]);
+  g.positionCounts = {};
+  g._recordPosition();
+  play(g, 'a1-a2', 'h8-h7', 'a2-a1', 'h7-h8', 'a1-a2', 'h8-h7', 'a2-a1');
+  assert.strictEqual(g.currentTurn, 'black');
+  const t = AI.bestTurn(g, 2);
+  assert.strictEqual(E.squareName(t.from) + E.squareName(t.move.to), 'h7h8');
+  play(g, 'h7-h8');
+  assert.strictEqual(g.drawReason, 'threefold repetition');
 });

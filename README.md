@@ -56,6 +56,7 @@ The four central squares — **d4, d5, e4, e5** — form the sacred Pyramid Zone
 - **Particle effects** — 12-particle sand-dust burst on capture; cinematic 10-ray ankh burst on resurrection
 - **WebAudio sounds** — procedural oscillator tones for select, move, capture, check, ankh, and victory; no audio files
 - **Move log** — long algebraic notation with unique Egyptian symbols (Ph Pharaoh, V Vizier, C Chariot, Pr Priest, S Sphinx; Soldiers unmarked), plus `+` check, `#` mate, `=V` promotion, `☥` resurrection
+- **Computer opponent** — Easy, Medium, or Hard; play either side. It understands the Ankh (and will resurrect to escape mate) and steers away from repetition draws when ahead. On the live site the search runs in a background thread so the page never stalls
 - **Take back, flip, mute** — unlimited undo (Ctrl+Z), board flip for Black's view, sound toggle that remembers your choice
 - **Keyboard & screen reader friendly** — arrow keys move around the board, Enter selects; squares, captures, and status are announced
 - **Responsive** — collapses to single column below 1060 px; smaller squares below 600 px
@@ -95,7 +96,9 @@ EgyptianChess/
 ├── js/
 │   ├── engine.js       # Pure game logic (window.PharaohEngine)
 │   ├── pieces-svg.js   # Egyptian SVG silhouettes (window.PIECE_SVGS)
-│   ├── game.js         # GameState class — move execution, Ankh logic
+│   ├── game.js         # GameState class — move execution, Ankh logic, draws, undo
+│   ├── ai.js           # Computer opponent — alpha-beta search (window.PharaohAI)
+│   ├── ai-worker.js    # Runs the search off the main thread when served over http(s)
 │   └── ui.js           # Rendering, WebAudio, particle FX, event handling
 ├── tests/
 │   └── rules.test.js   # node --test suite for engine + GameState

@@ -144,10 +144,47 @@ function findKing(color, board) {
   return -1;
 }
 
+const KNIGHT_STEPS = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
+const DIAGONALS    = [[-1,-1],[-1,1],[1,-1],[1,1]];
+const ORTHOGONALS  = [[-1,0],[1,0],[0,-1],[0,1]];
+
+// Looks outward from the square for attackers instead of generating every enemy move.
+// Valid for occupied squares (where a Soldier's diagonal capture applies), which is
+// all the engine asks about: the Pharaoh's square after a move.
 function isSquareAttacked(square, byColor, board) {
-  for (let i = 0; i < 64; i++) {
-    if (board[i]?.color === byColor) {
-      if (getRawMoves(i, board, null).some(m => m.to === square)) return true;
+  const { row, col } = idxToRC(square);
+  const at = (r, c) => onBoard(r, c) ? board[rcToIdx(r, c)] : null;
+  const isEnemy = (p, ...types) => p && p.color === byColor && types.includes(p.type);
+
+  for (const [dr, dc] of KNIGHT_STEPS) {
+    if (isEnemy(at(row + dr, col + dc), PIECES.SPHINX)) return true;
+  }
+  for (const [dr, dc] of DIAGONALS) {
+    // Adjacent: Pharaoh, Vizier, Priest, Sphinx
+    const p1 = at(row + dr, col + dc);
+    if (isEnemy(p1, PIECES.PHARAOH, PIECES.VIZIER, PIECES.PRIEST, PIECES.SPHINX)) return true;
+    // Soldiers capture toward the far side: White from below, Black from above
+    if (isEnemy(p1, PIECES.SOLDIER) && dr === (byColor === COLORS.WHITE ? 1 : -1)) return true;
+    if (p1 || !onBoard(row + dr, col + dc)) continue;
+    // Two away with an empty middle: Sphinx slide; further: Vizier/Priest rays
+    let r = row + 2 * dr, c = col + 2 * dc;
+    if (isEnemy(at(r, c), PIECES.SPHINX)) return true;
+    while (onBoard(r, c)) {
+      const p = board[rcToIdx(r, c)];
+      if (p) { if (isEnemy(p, PIECES.VIZIER, PIECES.PRIEST)) return true; break; }
+      r += dr; c += dc;
+    }
+  }
+  for (const [dr, dc] of ORTHOGONALS) {
+    let r = row + dr, c = col + dc, dist = 1;
+    while (onBoard(r, c)) {
+      const p = board[rcToIdx(r, c)];
+      if (p) {
+        if (isEnemy(p, PIECES.VIZIER, PIECES.CHARIOT)) return true;
+        if (dist === 1 && isEnemy(p, PIECES.PHARAOH)) return true;
+        break;
+      }
+      r += dr; c += dc; dist++;
     }
   }
   return false;
@@ -193,7 +230,7 @@ window.PharaohEngine = {
   PIECES, COLORS, PIECE_NAMES, PIECE_SYMBOLS, PIECE_VALUES, PYRAMID_SQUARES,
   idxToRC, rcToIdx, squareName,
   getRawMoves, getLegalMoves, applyMove,
-  findKing, isInCheck,
+  findKing, isInCheck, isSquareAttacked,
   makeInitialBoard, notation
 };
 })();
