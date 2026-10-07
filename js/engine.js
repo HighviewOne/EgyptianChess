@@ -17,6 +17,11 @@ const PIECE_NAMES = {
   priest: 'Priest', sphinx: 'Sphinx', soldier: 'Soldier'
 };
 
+// Unique move-log symbols (first letters collide: Pharaoh/Priest, Sphinx/Soldier)
+const PIECE_SYMBOLS = {
+  pharaoh: 'Ph', vizier: 'V', chariot: 'C', priest: 'Pr', sphinx: 'Sx', soldier: ''
+};
+
 const PIECE_VALUES = { pharaoh: 0, vizier: 9, chariot: 5, priest: 3, sphinx: 4, soldier: 1 };
 
 // d5, e5, d4, e4 (center pyramid zone)
@@ -181,11 +186,11 @@ function makeInitialBoard() {
 
 function notation(from, to, piece, captured) {
   const cap = captured ? 'x' : '-';
-  return `${PIECE_NAMES[piece.type][0]}${squareName(from)}${cap}${squareName(to)}`;
+  return `${PIECE_SYMBOLS[piece.type]}${squareName(from)}${cap}${squareName(to)}`;
 }
 
 window.PharaohEngine = {
-  PIECES, COLORS, PIECE_NAMES, PIECE_VALUES, PYRAMID_SQUARES,
+  PIECES, COLORS, PIECE_NAMES, PIECE_SYMBOLS, PIECE_VALUES, PYRAMID_SQUARES,
   idxToRC, rcToIdx, squareName,
   getRawMoves, getLegalMoves, applyMove,
   findKing, isInCheck,

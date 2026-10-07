@@ -60,8 +60,11 @@ class GameState {
 
   _executeMove(from, move) {
     const piece    = this.board[from];
-    const captured = this.board[move.to];
     const { row: toRow, col: toCol } = idxToRC(move.to);
+    const epIdx    = move.special === 'enPassant'
+      ? rcToIdx(piece.color === COLORS.WHITE ? toRow + 1 : toRow - 1, toCol)
+      : -1;
+    const captured = epIdx !== -1 ? this.board[epIdx] : this.board[move.to];
 
     const record = {
       from, to: move.to,
@@ -71,13 +74,7 @@ class GameState {
     };
 
     if (captured) this.capturedBy[this.currentTurn].push({ ...captured });
-
-    if (move.special === 'enPassant') {
-      const capRow = piece.color === COLORS.WHITE ? toRow + 1 : toRow - 1;
-      const ep = this.board[rcToIdx(capRow, toCol)];
-      if (ep) this.capturedBy[this.currentTurn].push({ ...ep });
-      this.board[rcToIdx(capRow, toCol)] = null;
-    }
+    if (epIdx !== -1) this.board[epIdx] = null;
 
     this.epTarget = move.special === 'doublePush'
       ? rcToIdx(toRow + (piece.color === COLORS.WHITE ? 1 : -1), toCol)
@@ -108,17 +105,23 @@ class GameState {
     const { square, color } = this.pendingPromotion;
     this.board[square] = { type, color };
     this.pendingPromotion = null;
+    const last = this.history[this.history.length - 1];
+    if (last) last.notation += `=${window.PharaohEngine.PIECE_SYMBOLS[type]}`;
     this._finishTurn();
   }
 
   _finishTurn() {
     this.currentTurn = this.currentTurn === COLORS.WHITE ? COLORS.BLACK : COLORS.WHITE;
     this._updateStatus();
+    const last = this.history[this.history.length - 1];
+    if (last && this.status === 'checkmate') last.notation += '#';
+    else if (last && this.status === 'check') last.notation += '+';
   }
 
   _updateStatus() {
     const inCheck  = isInCheck(this.currentTurn, this.board);
-    const hasLegal = this._hasAnyLegal(this.currentTurn);
+    // An available Ankh placement is a legal turn, so it can escape mate or stalemate
+    const hasLegal = this._hasAnyLegal(this.currentTurn) || this._hasLegalAnkh(this.currentTurn);
     if (!hasLegal) {
       this.status = inCheck ? 'checkmate' : 'stalemate';
       this.winner = inCheck
@@ -147,9 +150,26 @@ class GameState {
 
   cancelAnkh() { this.ankhMode = false; }
 
-  _getAnkhPiece() {
+  _hasLegalAnkh(color) {
+    if (this.ankhUsed[color]) return false;
+    const found = this._getAnkhPiece(color);
+    if (!found) return false;
+    const rows = color === COLORS.WHITE ? [6, 7] : [0, 1];
+    for (const r of rows) {
+      for (let c = 0; c < 8; c++) {
+        const idx = rcToIdx(r, c);
+        if (this.board[idx]) continue;
+        const nb = [...this.board];
+        nb[idx] = { ...found.piece };
+        if (!isInCheck(color, nb)) return true;
+      }
+    }
+    return false;
+  }
+
+  _getAnkhPiece(color = this.currentTurn) {
     // capturedBy[opp] = pieces captured BY opponent = OUR lost pieces
-    const opp = this.currentTurn === COLORS.WHITE ? COLORS.BLACK : COLORS.WHITE;
+    const opp = color === COLORS.WHITE ? COLORS.BLACK : COLORS.WHITE;
     const list = this.capturedBy[opp];
     for (let i = list.length - 1; i >= 0; i--) {
       if (list[i].type !== PIECES.PHARAOH) return { piece: list[i], listOwner: opp, idx: i };

@@ -149,7 +149,8 @@ function handleClick(idx) {
       SFX.ankh();
       showAnkhBurst();
       render();
-      if (game.status === 'checkmate') triggerGameOver();
+      if (game.status === 'check')          SFX.check();
+      if (game.status === 'checkmate')      triggerGameOver();
       else if (game.status === 'stalemate') triggerStalemate();
     }
     return;
@@ -329,14 +330,14 @@ function resetGame() {
   render();
 }
 
-document.getElementById('white-ankh').addEventListener('click', () => {
-  if (game.currentTurn !== E.COLORS.WHITE) return;
-  if (game.activateAnkh()) render();
-});
-document.getElementById('black-ankh').addEventListener('click', () => {
-  if (game.currentTurn !== E.COLORS.BLACK) return;
-  if (game.activateAnkh()) render();
-});
+for (const color of [E.COLORS.WHITE, E.COLORS.BLACK]) {
+  document.getElementById(`${color}-ankh`).addEventListener('click', () => {
+    if (game.currentTurn !== color) return;
+    // Clicking the active Ankh button again cancels placement
+    if (game.ankhMode) { game.cancelAnkh(); render(); return; }
+    if (game.activateAnkh()) render();
+  });
+}
 document.getElementById('new-game-btn').addEventListener('click', resetGame);
 document.getElementById('over-new-btn').addEventListener('click', resetGame);
 document.addEventListener('keydown', e => {
