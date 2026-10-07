@@ -132,3 +132,84 @@ test('promotion appends the chosen piece to the notation', () => {
   assert.strictEqual(g.history.at(-1).notation, 'a7-a8=C');
   assert.strictEqual(g.currentTurn, 'black');
 });
+
+test('threefold repetition ends the game in a draw', () => {
+  const g = new GameState();
+  const shuffle = ['g1-f3', 'g8-f6', 'f3-g1', 'f6-g8'];
+  play(g, ...shuffle);
+  assert.strictEqual(g.status, 'playing');
+  play(g, ...shuffle);
+  assert.strictEqual(g.status, 'draw');
+  assert.strictEqual(g.drawReason, 'threefold repetition');
+  assert.strictEqual(g.clickSquare(sq('e2')).action, 'gameover');
+});
+
+test('fifty-move rule: 100 quiet plies draw, a Soldier move resets the count', () => {
+  const g = new GameState();
+  g.halfmoveClock = 98;
+  play(g, 'e2-e4');
+  assert.strictEqual(g.halfmoveClock, 0);
+  g.halfmoveClock = 99;
+  play(g, 'g8-f6');
+  assert.strictEqual(g.status, 'draw');
+  assert.strictEqual(g.drawReason, 'fifty-move rule');
+});
+
+test('insufficient material draws only when no Ankh can bring pieces back', () => {
+  const pieces = [['e1', 'pharaoh', 'white'], ['e8', 'pharaoh', 'black'], ['c1', 'priest', 'white']];
+  const g = emptyGame(pieces);
+  g._updateStatus();
+  assert.strictEqual(g.status, 'draw');
+  assert.strictEqual(g.drawReason, 'insufficient material');
+
+  const withAnkh = emptyGame(pieces);
+  withAnkh.capturedBy.white.push({ type: 'chariot', color: 'black' });
+  withAnkh._updateStatus();
+  assert.strictEqual(withAnkh.status, 'playing');
+
+  const sphinx = emptyGame([['e1', 'pharaoh', 'white'], ['e8', 'pharaoh', 'black'], ['b1', 'sphinx', 'white']]);
+  sphinx._updateStatus();
+  assert.strictEqual(sphinx.status, 'playing');
+});
+
+test('undo restores the previous position, including captures and Ankh use', () => {
+  const g = new GameState();
+  const start = JSON.stringify(g.board);
+  play(g, 'e2-e4', 'd7-d5', 'e4-d5');
+  assert.strictEqual(g.capturedBy.white.length, 1);
+  assert.ok(g.undo());
+  assert.strictEqual(g.capturedBy.white.length, 0);
+  assert.strictEqual(g.board[sq('d5')].color, 'black');
+  assert.strictEqual(g.currentTurn, 'white');
+  play(g, 'e4-d5', 'd8-d5');
+  g.activateAnkh();
+  assert.strictEqual(g.clickSquare(sq('e2')).action, 'ankh_placed');
+  g.undo();
+  assert.strictEqual(g.ankhUsed.white, false);
+  assert.strictEqual(g.board[sq('e2')], null);
+  while (g.undo());
+  assert.strictEqual(JSON.stringify(g.board), start);
+  assert.strictEqual(g.history.length, 0);
+  assert.strictEqual(g.canUndo(), false);
+});
+
+test('undo during a pending promotion takes the Soldier move back', () => {
+  const g = emptyGame([['a7', 'soldier', 'white'], ['e1', 'pharaoh', 'white'], ['h5', 'pharaoh', 'black']]);
+  play(g, 'a7-a8');
+  assert.ok(g.pendingPromotion);
+  g.undo();
+  assert.strictEqual(g.pendingPromotion, null);
+  assert.strictEqual(g.board[sq('a7')].type, 'soldier');
+  assert.strictEqual(g.history.length, 0);
+});
+
+test('invalid Ankh placements report why', () => {
+  const g = new GameState();
+  play(g, 'e2-e4', 'd7-d5', 'e4-d5', 'd8-d5');
+  g.activateAnkh();
+  assert.strictEqual(g.clickSquare(sq('e4')).reason, 'not_home');
+  assert.strictEqual(g.clickSquare(sq('a2')).reason, 'occupied');
+  const r = g.clickSquare(sq('e2'));
+  assert.strictEqual(r.action, 'ankh_placed');
+  assert.strictEqual(g.history.at(-1).notation, '☥e2');
+});

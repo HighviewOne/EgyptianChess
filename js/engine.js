@@ -17,9 +17,9 @@ const PIECE_NAMES = {
   priest: 'Priest', sphinx: 'Sphinx', soldier: 'Soldier'
 };
 
-// Unique move-log symbols (first letters collide: Pharaoh/Priest, Sphinx/Soldier)
+// Unique move-log symbols (first letters collide for Pharaoh/Priest; Soldiers are unmarked)
 const PIECE_SYMBOLS = {
-  pharaoh: 'Ph', vizier: 'V', chariot: 'C', priest: 'Pr', sphinx: 'Sx', soldier: ''
+  pharaoh: 'Ph', vizier: 'V', chariot: 'C', priest: 'Pr', sphinx: 'S', soldier: ''
 };
 
 const PIECE_VALUES = { pharaoh: 0, vizier: 9, chariot: 5, priest: 3, sphinx: 4, soldier: 1 };

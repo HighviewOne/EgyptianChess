@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+Egyptian+Hieroglyphs&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg fill='none' stroke='%23e6b938' stroke-width='3.5' stroke-linecap='round'%3E%3Cellipse cx='16' cy='9' rx='5' ry='6'/%3E%3Cpath d='M16 15v14M7 17h18'/%3E%3C/g%3E%3C/svg%3E">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -63,7 +64,7 @@
             <span>8</span><span>7</span><span>6</span><span>5</span>
             <span>4</span><span>3</span><span>2</span><span>1</span>
           </div>
-          <div id="board" class="board"></div>
+          <div id="board" class="board" role="group" aria-label="Board — arrow keys to move between squares, Enter to select"></div>
           <div class="rank-labels">
             <span>8</span><span>7</span><span>6</span><span>5</span>
             <span>4</span><span>3</span><span>2</span><span>1</span>
@@ -91,7 +92,12 @@
 
       <!-- Controls: new-game + move log -->
       <div class="controls-row">
-        <button class="btn" id="new-game-btn">⟳ New Game</button>
+        <div class="control-btns">
+          <button class="btn" id="new-game-btn">⟳ New Game</button>
+          <button class="btn" id="undo-btn" title="Take back the last move (Ctrl+Z)" disabled>↶ Take Back</button>
+          <button class="btn" id="flip-btn" title="Turn the board around">⇅ Flip Board</button>
+          <button class="btn" id="mute-btn" aria-pressed="false">🔊 Sound On</button>
+        </div>
         <div class="log-box">
           <h4>Sacred Scroll</h4>
           <div id="move-log"></div>
@@ -127,30 +133,37 @@
       <div><b><span class="glyph">𓃬</span> Sphinx</b> (Extended Knight) — Standard knight L-jump <em>and</em> slides 1–2 squares diagonally without jumping over pieces.</div>
       <div><b>Soldier</b> (Pawn) — Forward 1; 2 from start; captures diagonally. En passant applies. Promotes at far rank.</div>
       <div><b>☥ Ankh Resurrection</b> — Once per game per side: spend your turn to place your most recently lost piece on any empty square in your back two ranks. Cannot leave you in check.</div>
+      <div><b>Resurrected pieces</b> return exactly as they were lost — a promoted Soldier comes back as its promoted piece.</div>
       <div><b>Pyramid Zone</b> (d4–e5) — Sacred ground. Positional atmosphere — no mechanical effect.</div>
-      <div>No castling. Check, checkmate, and stalemate follow classical rules.</div>
+      <div>No castling. Check, checkmate, and stalemate follow classical rules — an unused Ankh that could block or escape counts as a legal turn.</div>
+      <div><b>Draws</b> — threefold repetition, the fifty-move rule (no capture, Soldier move, or resurrection), or insufficient material (lone Pharaohs, or a single Priest, with no Ankh left to bring pieces back).</div>
     </div>
   </details>
 
 </div><!-- /app -->
 
 <!-- Promotion dialog -->
-<div class="dialog-overlay hidden" id="promo-dialog">
+<div class="dialog-overlay hidden" id="promo-dialog" role="dialog" aria-modal="true" aria-labelledby="promo-dialog-title">
   <div class="dialog-box">
     <div class="crest-large">𓋹</div>
-    <h3>Choose Promotion</h3>
+    <h3 id="promo-dialog-title">Choose Promotion</h3>
     <div class="promo-btns" id="promo-pieces"></div>
+    <div class="over-actions">
+      <button class="btn" id="promo-undo-btn">↶ Take Back</button>
+    </div>
   </div>
 </div>
 
 <!-- Game-over dialog -->
-<div class="dialog-overlay hidden" id="over-dialog">
+<div class="dialog-overlay hidden" id="over-dialog" role="dialog" aria-modal="true" aria-labelledby="over-title">
   <div class="dialog-box">
     <div class="crest-large" id="over-crest">𓂀</div>
     <h3 id="over-title">Checkmate</h3>
     <p class="over-message" id="over-msg"></p>
     <div class="over-actions">
       <button class="btn" id="over-new-btn">⟳ New Game</button>
+      <button class="btn" id="over-undo-btn">↶ Take Back</button>
+      <button class="btn" id="over-view-btn">View Board</button>
     </div>
   </div>
 </div>

@@ -247,7 +247,11 @@ body::after {
 }
 .cap-piece svg { width: 100%; height: 100%; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.6)); }
 .cap-piece.white { color: var(--gold); }
-.cap-piece.black { color: var(--ink); }
+.cap-piece.black { color: var(--ink); opacity: 1; }
+/* Dark pieces need a light rim to read on the dark tray */
+.cap-piece.black svg {
+  filter: drop-shadow(0 0 1px var(--sand-pale)) drop-shadow(0 0 3px rgba(245,213,116,0.55));
+}
 
 /* Ankh button */
 .ankh-btn {
@@ -372,6 +376,8 @@ body::after {
 /* Squares */
 .square {
   position: relative;
+  border: 0; padding: 0; margin: 0;
+  font: inherit; color: inherit;
   cursor: pointer;
   user-select: none;
   display: flex; align-items: center; justify-content: center;
@@ -535,6 +541,16 @@ body::after {
     drop-shadow(0 0 4px rgba(230,185,56,0.4));
 }
 .square:hover .piece { transform: scale(1.07); }
+.square:focus { outline: none; }
+.square:focus-visible {
+  outline: 3px solid var(--turquoise);
+  outline-offset: -3px;
+  z-index: 3;
+}
+
+/* Flipped board: coordinates read from Black's side */
+.board-with-labels.flipped .file-labels { flex-direction: row-reverse; }
+.board-with-labels.flipped .rank-labels { flex-direction: column-reverse; }
 
 /* ── Status bar ── */
 .status-bar {
@@ -591,7 +607,13 @@ body::after {
   transition: all 0.2s;
   white-space: nowrap;
 }
-.btn:hover {
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn:focus-visible, .ankh-btn:focus-visible, .promo-btn:focus-visible {
+  outline: 2px solid var(--turquoise);
+  outline-offset: 2px;
+}
+.control-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-content: start; }
+.btn:not(:disabled):hover {
   background: linear-gradient(180deg, var(--gold-deep), var(--stone-mid));
   color: #fff;
   box-shadow: 0 0 12px rgba(245,213,116,0.3);
@@ -813,10 +835,13 @@ body::after {
   .board-stage { width: 100%; }
 }
 @media (max-width: 600px) {
-  .board { --sq: 42px; }
-  .board-frame { padding: 16px; }
+  /* Fit the board, labels, and frame inside a phone screen */
+  .board { --sq: min(42px, calc((100vw - 92px) / 8)); }
+  .board-frame { padding: 10px; }
+  .board-frame .frame-glyphs { display: none; }
   .header h1 { letter-spacing: 6px; font-size: 26px; }
   .game-layout { gap: 10px; }
+  .controls-row { flex-direction: column; }
 }
 
 /* Scrollbars */

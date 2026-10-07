@@ -2,17 +2,29 @@ const E = window.PharaohEngine;
 
 // Decorative hieroglyphs carved into squares
 const SQ_GLYPHS = ['𓂀','𓋹','𓆗','𓊽','𓃬','𓀎','𓁢','𓇋','𓎛','𓍯','𓏛','𓂓','𓃀','𓆣','𓄿','𓀀'];
+const REALM = { white: 'Lower Egypt', black: 'Upper Egypt' };
 
 let game;
+let flipped  = false;   // Black at the bottom
+let focusIdx = E.rcToIdx(6, 4);   // board square that holds the keyboard tab stop (e2)
+let ankhHint = null;    // temporary status message after an invalid Ankh placement
+
+// Browser storage can be unavailable (private mode, blocked site data)
+const store = {
+  get(k)    { try { return localStorage.getItem(k); } catch (_) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (_) {} }
+};
 
 // ── Audio ────────────────────────────────────────────────────────────────────
 
+let muted = store.get('pharaoh-muted') === '1';
 let audioCtx = null;
 function ac() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
   return audioCtx;
 }
 function tone(freq, type, dur, delay = 0, vol = 0.14) {
+  if (muted) return;
   try {
     const ctx = ac();
     const osc = ctx.createOscillator();
@@ -29,11 +41,16 @@ const SFX = {
   move:    () => tone(440, 'triangle', 0.1),
   capture: () => { tone(220, 'sawtooth', 0.08); tone(160, 'sawtooth', 0.08, 0.06); },
   check:   () => tone(150, 'square', 0.4, 0, 0.12),
+  invalid: () => tone(110, 'square', 0.12, 0, 0.08),
   ankh:    () => { tone(262, 'triangle', 0.25); tone(330, 'triangle', 0.25, 0.25); tone(392, 'triangle', 0.25, 0.5); },
   win:     () => { tone(262, 'triangle', 0.3); tone(330, 'triangle', 0.3, 0.3); tone(392, 'triangle', 0.3, 0.6); tone(524, 'triangle', 0.5, 0.9); }
 };
 
 // ── FX ───────────────────────────────────────────────────────────────────────
+
+function squareEl(idx) {
+  return document.querySelector(`#board .square[data-idx="${idx}"]`);
+}
 
 function spawnDust(squareEl, color) {
   const fxLayer = document.getElementById('fx-layer');
@@ -86,25 +103,44 @@ function render() {
   updateAnkhBtns();
   updateMoveLog();
   updatePanelActive();
+  updateControls();
+}
+
+// Board index shown at display position d (0 = top-left)
+const displayToIdx = (d) => flipped ? 63 - d : d;
+
+function squareLabel(i, piece, isLegal) {
+  let label = E.squareName(i);
+  if (piece) label += `, ${cap(piece.color)} ${E.PIECE_NAMES[piece.type]}`;
+  if (i === game.selectedIdx) label += ', selected';
+  if (isLegal) label += piece ? ', capture' : ', legal move';
+  return label;
 }
 
 function renderBoard() {
   const boardEl = document.getElementById('board');
+  const hadFocus = boardEl.contains(document.activeElement);
   boardEl.innerHTML = '';
+  document.querySelector('.board-with-labels').classList.toggle('flipped', flipped);
 
   const kingCheck = (game.status === 'check' || game.status === 'checkmate')
     ? E.findKing(game.currentTurn, game.board) : -1;
   const legalSet = new Set(game.legalMoves.map(m => m.to));
+  const ankhRows = game.currentTurn === E.COLORS.WHITE ? [6, 7] : [0, 1];
 
-  for (let i = 0; i < 64; i++) {
+  for (let d = 0; d < 64; d++) {
+    const i = displayToIdx(d);
     const { row, col } = E.idxToRC(i);
-    const sq = document.createElement('div');
+    const sq = document.createElement('button');
+    sq.type = 'button';
     sq.className = 'square ' + ((row + col) % 2 === 0 ? 'light' : 'dark');
+    sq.dataset.idx = i;
     sq.dataset.glyph = SQ_GLYPHS[i % SQ_GLYPHS.length];
+    sq.tabIndex = i === focusIdx ? 0 : -1;
 
     const piece = game.board[i];
-    const isPyramid = E.PYRAMID_SQUARES.has(i);
-    if (isPyramid) { sq.classList.add('pyramid'); if (piece) sq.classList.add('occupied'); }
+    sq.setAttribute('aria-label', squareLabel(i, piece, legalSet.has(i)));
+    if (E.PYRAMID_SQUARES.has(i)) { sq.classList.add('pyramid'); if (piece) sq.classList.add('occupied'); }
     if (i === game.selectedIdx) sq.classList.add('selected');
     if (i === kingCheck)        sq.classList.add('in-check');
     if (i === game.lastFrom)    sq.classList.add('last-move-from');
@@ -116,10 +152,7 @@ function renderBoard() {
       sq.appendChild(indicator);
     }
 
-    if (game.ankhMode) {
-      const validRows = game.currentTurn === E.COLORS.WHITE ? [6, 7] : [0, 1];
-      if (validRows.includes(row) && !piece) sq.classList.add('ankh-target');
-    }
+    if (game.ankhMode && ankhRows.includes(row) && !piece) sq.classList.add('ankh-target');
 
     if (piece) {
       const pd = document.createElement('div');
@@ -128,54 +161,99 @@ function renderBoard() {
       sq.appendChild(pd);
     }
 
-    sq.addEventListener('click', () => handleClick(i));
     boardEl.appendChild(sq);
   }
+  if (hadFocus) squareEl(focusIdx)?.focus();
 }
 
 function updatePanelActive() {
-  document.getElementById('white-panel').classList.toggle('active', game.currentTurn === E.COLORS.WHITE && game.status !== 'checkmate' && game.status !== 'stalemate');
-  document.getElementById('black-panel').classList.toggle('active', game.currentTurn === E.COLORS.BLACK && game.status !== 'checkmate' && game.status !== 'stalemate');
+  for (const color of [E.COLORS.WHITE, E.COLORS.BLACK]) {
+    document.getElementById(`${color}-panel`).classList.toggle('active', game.currentTurn === color && !game.isOver());
+  }
+}
+
+function updateControls() {
+  document.getElementById('undo-btn').disabled = !game.canUndo();
+  const muteBtn = document.getElementById('mute-btn');
+  muteBtn.textContent = muted ? '🔇 Sound Off' : '🔊 Sound On';
+  muteBtn.setAttribute('aria-pressed', String(muted));
 }
 
 // ── Event handling ────────────────────────────────────────────────────────────
 
+const ANKH_HINTS = {
+  not_home: 'must go on your back two ranks',
+  occupied: 'that square is taken',
+  check:    'that would leave your Pharaoh in check'
+};
+
 function handleClick(idx) {
   if (game.pendingPromotion) return;
+  focusIdx = idx;
 
   if (game.ankhMode) {
     const result = game.clickSquare(idx);
     if (result.action === 'ankh_placed') {
+      ankhHint = null;
       SFX.ankh();
       showAnkhBurst();
       render();
-      if (game.status === 'check')          SFX.check();
-      if (game.status === 'checkmate')      triggerGameOver();
-      else if (game.status === 'stalemate') triggerStalemate();
+      afterTurn();
+    } else if (result.action === 'ankh_invalid') {
+      ankhHint = ANKH_HINTS[result.reason];
+      SFX.invalid();
+      updateStatus();
+      squareEl(idx)?.animate(
+        [{ transform: 'translateX(0)' }, { transform: 'translateX(-4px)' },
+         { transform: 'translateX(4px)' }, { transform: 'translateX(0)' }],
+        { duration: 220 }
+      );
     }
     return;
   }
 
-  const prevSelected = game.selectedIdx;
   const result = game.clickSquare(idx);
 
   if (result.action === 'select') { SFX.select(); }
-  else if (result.action === 'deselect') { /* silent */ }
   else if (result.action === 'move' || result.action === 'promotion') {
     if (result.record?.captured) {
       SFX.capture();
-      const sqEl = document.getElementById('board').children[result.record.to];
+      const sqEl = squareEl(result.record.to);
       if (sqEl) spawnDust(sqEl, result.record.color);
     } else {
       SFX.move();
     }
-    if (result.action === 'promotion') { render(); showPromoDialog(); return; }
-    if (game.status === 'check')      SFX.check();
-    if (game.status === 'checkmate')  { render(); triggerGameOver(); return; }
-    if (game.status === 'stalemate')  { render(); triggerStalemate(); return; }
+    render();
+    if (result.action === 'promotion') showPromoDialog();
+    else afterTurn();
+    return;
   }
 
   render();
+}
+
+// Sounds and dialogs once a turn has fully finished
+function afterTurn() {
+  if (game.status === 'check')     SFX.check();
+  if (game.status === 'checkmate') triggerGameOver();
+  if (game.status === 'stalemate') triggerStalemate();
+  if (game.status === 'draw')      triggerDraw();
+}
+
+// Arrow keys move the tab stop around the board; Enter/Space activate natively
+function handleBoardKey(e) {
+  const step = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] }[e.key];
+  if (!step) return;
+  e.preventDefault();
+  const dir = flipped ? -1 : 1;
+  const { row, col } = E.idxToRC(focusIdx);
+  const r = Math.min(7, Math.max(0, row + step[0] * dir));
+  const c = Math.min(7, Math.max(0, col + step[1] * dir));
+  squareEl(focusIdx).tabIndex = -1;
+  focusIdx = E.rcToIdx(r, c);
+  const next = squareEl(focusIdx);
+  next.tabIndex = 0;
+  next.focus();
 }
 
 function showPromoDialog() {
@@ -198,49 +276,60 @@ function showPromoDialog() {
       SFX.move();
       dialog.classList.add('hidden');
       render();
-      if (game.status === 'check')     SFX.check();
-      if (game.status === 'checkmate') triggerGameOver();
-      if (game.status === 'stalemate') triggerStalemate();
+      afterTurn();
     };
     cont.appendChild(btn);
   }
   dialog.classList.remove('hidden');
+  cont.querySelector('button').focus();
+}
+
+function showOverDialog(crest, title, msg) {
+  document.getElementById('over-crest').textContent = crest;
+  document.getElementById('over-title').textContent = title;
+  document.getElementById('over-msg').textContent   = msg;
+  document.getElementById('over-dialog').classList.remove('hidden');
+  document.getElementById('over-new-btn').focus();
 }
 
 function triggerGameOver() {
   const winner = game.winner;
-  const realm  = { white: 'Lower Egypt', black: 'Upper Egypt' };
-  document.getElementById('over-crest').textContent = winner === 'white' ? '𓋹' : '𓁢';
-  document.getElementById('over-title').textContent  = `${cap(winner)} Triumphs!`;
-  document.getElementById('over-msg').textContent    = `${realm[winner]} claims the throne. All glory to the Pharaoh!`;
-  document.getElementById('over-dialog').classList.remove('hidden');
+  showOverDialog(winner === 'white' ? '𓋹' : '𓁢', `${cap(winner)} Triumphs!`,
+    `${REALM[winner]} claims the throne. All glory to the Pharaoh!`);
   SFX.win();
 }
 
 function triggerStalemate() {
-  document.getElementById('over-crest').textContent = '⚖';
-  document.getElementById('over-title').textContent  = 'Stalemate';
-  document.getElementById('over-msg').textContent    = 'The gods decree a sacred draw. Neither Egypt falls.';
-  document.getElementById('over-dialog').classList.remove('hidden');
+  showOverDialog('⚖', 'Stalemate', 'The gods decree a sacred draw. Neither Egypt falls.');
+}
+
+function triggerDraw() {
+  showOverDialog('⚖', 'Draw', `A draw by ${game.drawReason}. Neither Egypt falls.`);
+}
+
+function hideDialogs() {
+  document.getElementById('promo-dialog').classList.add('hidden');
+  document.getElementById('over-dialog').classList.add('hidden');
 }
 
 // ── Status & counters ─────────────────────────────────────────────────────────
 
 function updateStatus() {
-  const el    = document.getElementById('status-text');
-  const realm = { white: 'Lower Egypt ☀', black: 'Upper Egypt ☽' };
+  const el = document.getElementById('status-text');
 
   if (game.ankhMode) {
     const p = game._getAnkhPiece();
-    el.textContent = p
-      ? `☥ Ankh — place your ${E.PIECE_NAMES[p.piece.type]} on a home square (Esc to cancel)`
-      : '☥ Ankh active';
+    el.textContent = ankhHint
+      ? `☥ Not there — ${ankhHint} (Esc to cancel)`
+      : p
+        ? `☥ Ankh — place your ${E.PIECE_NAMES[p.piece.type]} on a home square (Esc to cancel)`
+        : '☥ Ankh active';
     el.className = 'ankh';
     return;
   }
   switch (game.status) {
     case 'playing':
-      el.textContent = `${cap(game.currentTurn)} to move — ${realm[game.currentTurn]}`;
+      el.textContent = `${cap(game.currentTurn)} to move — ${REALM[game.currentTurn]} ${game.currentTurn === 'white' ? '☀' : '☽'}`;
       el.className = '';
       break;
     case 'check':
@@ -248,10 +337,15 @@ function updateStatus() {
       el.className = 'check';
       break;
     case 'checkmate':
+      el.textContent = `${cap(game.winner)} triumphs — Checkmate!`;
+      el.className = 'over';
+      break;
     case 'stalemate':
-      el.textContent = game.status === 'checkmate'
-        ? `${cap(game.winner)} triumphs — Checkmate!`
-        : 'Stalemate — Sacred draw';
+      el.textContent = 'Stalemate — Sacred draw';
+      el.className = 'over';
+      break;
+    case 'draw':
+      el.textContent = `Draw — ${cap(game.drawReason)}`;
       el.className = 'over';
       break;
   }
@@ -268,6 +362,8 @@ function updateCaptured() {
       const sp = document.createElement('div');
       sp.className = `cap-piece ${p.color}`;
       sp.title = E.PIECE_NAMES[p.type];
+      sp.setAttribute('role', 'img');
+      sp.setAttribute('aria-label', E.PIECE_NAMES[p.type]);
       sp.innerHTML = window.PIECE_SVGS[p.type];
       el.appendChild(sp);
     }
@@ -282,8 +378,7 @@ function updateAnkhBtns() {
     const opp = color === E.COLORS.WHITE ? E.COLORS.BLACK : E.COLORS.WHITE;
     const hasLost = game.capturedBy[opp].some(p => p.type !== E.PIECES.PHARAOH);
     const canUse  = !game.ankhUsed[color] && isMyTurn && hasLost
-                    && !game.pendingPromotion
-                    && game.status !== 'checkmate' && game.status !== 'stalemate';
+                    && !game.pendingPromotion && !game.isOver();
 
     btn.disabled = !canUse;
     if (game.ankhUsed[color]) {
@@ -291,13 +386,13 @@ function updateAnkhBtns() {
       btn.classList.add('used'); btn.classList.remove('active');
       lbl.textContent = 'resurrection spent';
     } else {
-      btn.textContent = 'Ankh Resurrection';
+      const active = game.ankhMode && isMyTurn;
+      btn.textContent = active ? 'Cancel Ankh' : 'Ankh Resurrection';
       btn.classList.remove('used');
-      btn.classList.toggle('active', game.ankhMode && isMyTurn);
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-pressed', String(active));
       lbl.textContent = '1 resurrection remaining';
     }
-    // Re-add the ::before via the CSS — just fix the textContent prefix
-    // (the ::before pseudo-element handles the ☥ glyph)
   }
 }
 
@@ -324,24 +419,55 @@ function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 // ── Controls ─────────────────────────────────────────────────────────────────
 
 function resetGame() {
-  document.getElementById('promo-dialog').classList.add('hidden');
-  document.getElementById('over-dialog').classList.add('hidden');
+  hideDialogs();
   game.reset();
+  ankhHint = null;
   render();
 }
 
+function undoMove() {
+  if (!game.undo()) return;
+  hideDialogs();
+  ankhHint = null;
+  render();
+}
+
+function toggleAnkh(color) {
+  if (game.currentTurn !== color) return;
+  ankhHint = null;
+  // Clicking the active Ankh button again cancels placement
+  if (game.ankhMode) game.cancelAnkh();
+  else if (!game.activateAnkh()) return;
+  render();
+}
+
+const boardEl = document.getElementById('board');
+boardEl.addEventListener('click', e => {
+  const sq = e.target.closest('.square');
+  if (sq) handleClick(Number(sq.dataset.idx));
+});
+boardEl.addEventListener('keydown', handleBoardKey);
+
 for (const color of [E.COLORS.WHITE, E.COLORS.BLACK]) {
-  document.getElementById(`${color}-ankh`).addEventListener('click', () => {
-    if (game.currentTurn !== color) return;
-    // Clicking the active Ankh button again cancels placement
-    if (game.ankhMode) { game.cancelAnkh(); render(); return; }
-    if (game.activateAnkh()) render();
-  });
+  document.getElementById(`${color}-ankh`).addEventListener('click', () => toggleAnkh(color));
 }
 document.getElementById('new-game-btn').addEventListener('click', resetGame);
 document.getElementById('over-new-btn').addEventListener('click', resetGame);
+document.getElementById('undo-btn').addEventListener('click', undoMove);
+document.getElementById('over-undo-btn').addEventListener('click', undoMove);
+document.getElementById('promo-undo-btn').addEventListener('click', undoMove);
+document.getElementById('over-view-btn').addEventListener('click', hideDialogs);
+document.getElementById('flip-btn').addEventListener('click', () => { flipped = !flipped; render(); });
+document.getElementById('mute-btn').addEventListener('click', () => {
+  muted = !muted;
+  store.set('pharaoh-muted', muted ? '1' : '0');
+  updateControls();
+});
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && game.ankhMode) { game.cancelAnkh(); render(); }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undoMove(); return; }
+  if (e.key !== 'Escape') return;
+  if (game.ankhMode) { toggleAnkh(game.currentTurn); return; }
+  if (!document.getElementById('over-dialog').classList.contains('hidden')) hideDialogs();
 });
 
 // ── Init ──────────────────────────────────────────────────────────────────────
