@@ -43,6 +43,9 @@ The four central squares — **d4, d5, e4, e5** — form the sacred Pyramid Zone
 - **No castling** — the Chariot stands alone
 - **En passant** retained as-is
 - **Promotion** choices: Vizier, Chariot, Priest, or Sphinx
+- **Mate and stalemate** count an unused Ankh: if a resurrection could block or escape, the game goes on
+- **Draws** by threefold repetition, the fifty-move rule (a resurrection resets it, like a capture or Soldier move), or insufficient material (lone Pharaohs or a single Priest, with no Ankh left)
+- **Resurrected pieces** return exactly as lost — a promoted Soldier comes back promoted
 
 ---
 
@@ -52,7 +55,9 @@ The four central squares — **d4, d5, e4, e5** — form the sacred Pyramid Zone
 - **Hi-fi visual design** — carved sandstone board, hieroglyph frieze, ambient wall texture, vignette
 - **Particle effects** — 12-particle sand-dust burst on capture; cinematic 10-ray ankh burst on resurrection
 - **WebAudio sounds** — procedural oscillator tones for select, move, capture, check, ankh, and victory; no audio files
-- **Move log** — full algebraic-style notation with Egyptian piece initials
+- **Move log** — long algebraic notation with unique Egyptian symbols (Ph Pharaoh, V Vizier, C Chariot, Pr Priest, S Sphinx; Soldiers unmarked), plus `+` check, `#` mate, `=V` promotion, `☥` resurrection
+- **Take back, flip, mute** — unlimited undo (Ctrl+Z), board flip for Black's view, sound toggle that remembers your choice
+- **Keyboard & screen reader friendly** — arrow keys move around the board, Enter selects; squares, captures, and status are announced
 - **Responsive** — collapses to single column below 1060 px; smaller squares below 600 px
 - **Zero dependencies** — vanilla HTML/CSS/JS, runs from the filesystem with no server
 
@@ -70,6 +75,14 @@ xdg-open index.html   # Linux
 
 Or play instantly: **[highviewone.github.io/EgyptianChess](https://highviewone.github.io/EgyptianChess/)**
 
+### Running the tests
+
+The engine and game rules have a small test suite that uses Node's built-in runner (Node 18+, no install step):
+
+```bash
+node --test
+```
+
 ---
 
 ## Project Structure
@@ -84,6 +97,8 @@ EgyptianChess/
 │   ├── pieces-svg.js   # Egyptian SVG silhouettes (window.PIECE_SVGS)
 │   ├── game.js         # GameState class — move execution, Ankh logic
 │   └── ui.js           # Rendering, WebAudio, particle FX, event handling
+├── tests/
+│   └── rules.test.js   # node --test suite for engine + GameState
 └── docs/
     └── banner.svg      # README banner
 ```
