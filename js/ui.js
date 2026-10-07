@@ -8,6 +8,7 @@ let game;
 let flipped  = false;   // Black at the bottom
 let focusIdx = E.rcToIdx(6, 4);   // board square that holds the keyboard tab stop (e2)
 let ankhHint = null;    // temporary status message after an invalid Ankh placement
+let cancelThink = null; // stops the computer's search in progress
 
 // Browser storage can be unavailable (private mode, blocked site data)
 const store = {
@@ -18,6 +19,40 @@ const store = {
 // ── Audio ────────────────────────────────────────────────────────────────────
 
 let muted = store.get('pharaoh-muted') === '1';
+
+// ── Opponent ─────────────────────────────────────────────────────────────────
+
+let opponentMode = store.get('pharaoh-opponent') || 'human';   // human | easy | medium | hard
+let humanSide = store.get('pharaoh-side') === 'black' ? 'black' : 'white';
+flipped = humanSide === 'black';
+
+const computerColor  = () => opponentMode === 'human' ? null : (humanSide === 'white' ? 'black' : 'white');
+const isComputerTurn = () => game.currentTurn === computerColor();
+
+function stopThinking() {
+  if (cancelThink) cancelThink();
+  cancelThink = null;
+}
+
+function maybeComputerMove() {
+  if (cancelThink || !isComputerTurn() || game.isOver() || game.pendingPromotion) return;
+  cancelThink = window.PharaohAI.thinkInBackground(game, opponentMode, turn => {
+    cancelThink = null;
+    if (turn) playComputerTurn(turn);
+    else render();
+  });
+  updateStatus();
+}
+
+function playComputerTurn(t) {
+  if (t.kind === 'ankh') {
+    game.activateAnkh();
+    handleClick(t.to);
+  } else {
+    game.clickSquare(t.from);
+    handleClick(t.move.to, t.promo);
+  }
+}
 let audioCtx = null;
 function ac() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -104,6 +139,7 @@ function render() {
   updateMoveLog();
   updatePanelActive();
   updateControls();
+  maybeComputerMove();
 }
 
 // Board index shown at display position d (0 = top-left)
@@ -174,6 +210,13 @@ function updatePanelActive() {
 
 function updateControls() {
   document.getElementById('undo-btn').disabled = !game.canUndo();
+  document.getElementById('opponent-select').value = opponentMode;
+  const sideSel = document.getElementById('side-select');
+  sideSel.value = humanSide;
+  sideSel.disabled = opponentMode === 'human';
+  for (const color of ['white', 'black']) {
+    document.getElementById(`${color}-panel`).classList.toggle('computer', computerColor() === color);
+  }
   const muteBtn = document.getElementById('mute-btn');
   muteBtn.textContent = muted ? '🔇 Sound Off' : '🔊 Sound On';
   muteBtn.setAttribute('aria-pressed', String(muted));
@@ -187,9 +230,8 @@ const ANKH_HINTS = {
   check:    'that would leave your Pharaoh in check'
 };
 
-function handleClick(idx) {
+function handleClick(idx, promo = null) {
   if (game.pendingPromotion) return;
-  focusIdx = idx;
 
   if (game.ankhMode) {
     const result = game.clickSquare(idx);
@@ -223,8 +265,9 @@ function handleClick(idx) {
     } else {
       SFX.move();
     }
+    if (result.action === 'promotion' && promo) game.promotePiece(promo);
     render();
-    if (result.action === 'promotion') showPromoDialog();
+    if (game.pendingPromotion) showPromoDialog();
     else afterTurn();
     return;
   }
@@ -294,7 +337,9 @@ function showOverDialog(crest, title, msg) {
 
 function triggerGameOver() {
   const winner = game.winner;
-  showOverDialog(winner === 'white' ? '𓋹' : '𓁢', `${cap(winner)} Triumphs!`,
+  const title = !computerColor() ? `${cap(winner)} Triumphs!`
+    : winner === computerColor() ? 'The Computer Triumphs' : 'You Triumph!';
+  showOverDialog(winner === 'white' ? '𓋹' : '𓁢', title,
     `${REALM[winner]} claims the throne. All glory to the Pharaoh!`);
   SFX.win();
 }
@@ -325,6 +370,11 @@ function updateStatus() {
         ? `☥ Ankh — place your ${E.PIECE_NAMES[p.piece.type]} on a home square (Esc to cancel)`
         : '☥ Ankh active';
     el.className = 'ankh';
+    return;
+  }
+  if (cancelThink) {
+    el.textContent = `${game.status === 'check' ? '⚔ Check! ' : ''}𓂀 The computer is thinking…`;
+    el.className = 'thinking';
     return;
   }
   switch (game.status) {
@@ -377,7 +427,7 @@ function updateAnkhBtns() {
     const isMyTurn = game.currentTurn === color;
     const opp = color === E.COLORS.WHITE ? E.COLORS.BLACK : E.COLORS.WHITE;
     const hasLost = game.capturedBy[opp].some(p => p.type !== E.PIECES.PHARAOH);
-    const canUse  = !game.ankhUsed[color] && isMyTurn && hasLost
+    const canUse  = !game.ankhUsed[color] && isMyTurn && hasLost && color !== computerColor()
                     && !game.pendingPromotion && !game.isOver();
 
     btn.disabled = !canUse;
@@ -419,6 +469,7 @@ function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 // ── Controls ─────────────────────────────────────────────────────────────────
 
 function resetGame() {
+  stopThinking();
   hideDialogs();
   game.reset();
   ankhHint = null;
@@ -426,14 +477,17 @@ function resetGame() {
 }
 
 function undoMove() {
+  stopThinking();
   if (!game.undo()) return;
+  // Against the computer, take back its reply too so it is your turn again
+  if (isComputerTurn() && game.canUndo()) game.undo();
   hideDialogs();
   ankhHint = null;
   render();
 }
 
 function toggleAnkh(color) {
-  if (game.currentTurn !== color) return;
+  if (game.currentTurn !== color || color === computerColor()) return;
   ankhHint = null;
   // Clicking the active Ankh button again cancels placement
   if (game.ankhMode) game.cancelAnkh();
@@ -444,7 +498,9 @@ function toggleAnkh(color) {
 const boardEl = document.getElementById('board');
 boardEl.addEventListener('click', e => {
   const sq = e.target.closest('.square');
-  if (sq) handleClick(Number(sq.dataset.idx));
+  if (!sq || isComputerTurn()) return;
+  focusIdx = Number(sq.dataset.idx);
+  handleClick(focusIdx);
 });
 boardEl.addEventListener('keydown', handleBoardKey);
 
@@ -458,6 +514,21 @@ document.getElementById('over-undo-btn').addEventListener('click', undoMove);
 document.getElementById('promo-undo-btn').addEventListener('click', undoMove);
 document.getElementById('over-view-btn').addEventListener('click', hideDialogs);
 document.getElementById('flip-btn').addEventListener('click', () => { flipped = !flipped; render(); });
+document.getElementById('opponent-select').addEventListener('change', e => {
+  stopThinking();
+  opponentMode = e.target.value;
+  store.set('pharaoh-opponent', opponentMode);
+  if (game.ankhMode && isComputerTurn()) game.cancelAnkh();
+  render();
+});
+document.getElementById('side-select').addEventListener('change', e => {
+  stopThinking();
+  humanSide = e.target.value;
+  store.set('pharaoh-side', humanSide);
+  flipped = humanSide === 'black';
+  if (game.ankhMode && isComputerTurn()) game.cancelAnkh();
+  render();
+});
 document.getElementById('mute-btn').addEventListener('click', () => {
   muted = !muted;
   store.set('pharaoh-muted', muted ? '1' : '0');

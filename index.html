@@ -90,6 +90,24 @@
         <span id="status-text" role="status" aria-live="polite">White to move</span>
       </div>
 
+      <!-- Opponent settings -->
+      <div class="game-options">
+        <label>Opponent
+          <select id="opponent-select">
+            <option value="human">Two players</option>
+            <option value="easy">Computer · Easy</option>
+            <option value="medium">Computer · Medium</option>
+            <option value="hard">Computer · Hard</option>
+          </select>
+        </label>
+        <label>You play
+          <select id="side-select">
+            <option value="white">White ☀</option>
+            <option value="black">Black ☽</option>
+          </select>
+        </label>
+      </div>
+
       <!-- Controls: new-game + move log -->
       <div class="controls-row">
         <div class="control-btns">
@@ -171,6 +189,7 @@
 <script src="js/engine.js"></script>
 <script src="js/pieces-svg.js"></script>
 <script src="js/game.js"></script>
+<script src="js/ai.js"></script>
 <script src="js/ui.js"></script>
 </body>
 </html>

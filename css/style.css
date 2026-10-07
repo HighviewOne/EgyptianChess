@@ -619,6 +619,37 @@ body::after {
   box-shadow: 0 0 12px rgba(245,213,116,0.3);
 }
 
+/* Panel of the side the computer plays */
+.panel.computer .panel-name::after {
+  content: 'Computer';
+  display: block;
+  margin-top: 4px;
+  font-family: 'Cinzel', serif;
+  font-size: 9px; letter-spacing: 3px; text-transform: uppercase;
+  color: var(--turquoise);
+}
+
+/* Opponent settings */
+.game-options {
+  display: flex; gap: 18px; justify-content: center; flex-wrap: wrap;
+  width: 100%;
+  font-family: 'Cinzel', serif;
+  font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--sand-mid);
+}
+.game-options label { display: flex; align-items: center; gap: 8px; }
+.game-options select {
+  font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 1px;
+  padding: 6px 8px;
+  background: var(--stone-dark);
+  color: var(--gold-bright);
+  border: 1px solid var(--gold-deep);
+  border-radius: 2px;
+}
+.game-options select:disabled { opacity: 0.4; }
+.game-options select:focus-visible { outline: 2px solid var(--turquoise); outline-offset: 2px; }
+#status-text.thinking { color: var(--sand-pale); }
+
 /* Move log */
 .log-box {
   flex: 1;
