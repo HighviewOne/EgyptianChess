@@ -122,6 +122,39 @@ function spawnDust(squareEl, color) {
   }
 }
 
+// ── Piece motion ─────────────────────────────────────────────────────────────
+
+const SLIDE_MS = 200;
+const prefersReducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+// After the board is redrawn, glide the piece now on `to` from where `from` is on screen
+function slidePiece(from, to, onLanded) {
+  const dest = squareEl(to);
+  const piece = dest?.querySelector('.piece');
+  const start = squareEl(from);
+  if (!piece || !start || prefersReducedMotion()) { onLanded?.(); return; }
+  const a = start.getBoundingClientRect();
+  const b = dest.getBoundingClientRect();
+  dest.style.zIndex = 5;   // pass over the squares in between
+  const anim = piece.animate(
+    [{ transform: `translate(${a.left - b.left}px, ${a.top - b.top}px)` }, { transform: 'translate(0, 0)' }],
+    { duration: SLIDE_MS, easing: 'cubic-bezier(0.2, 0.7, 0.3, 1)' }
+  );
+  const done = () => { dest.style.zIndex = ''; onLanded?.(); };
+  anim.onfinish = done;
+  anim.oncancel = () => { dest.style.zIndex = ''; };
+}
+
+// A resurrected piece grows out of its square
+function riseFromAnkh(idx) {
+  const piece = squareEl(idx)?.querySelector('.piece');
+  if (!piece || prefersReducedMotion()) return;
+  piece.animate(
+    [{ transform: 'scale(0.3)', opacity: 0 }, { transform: 'scale(1.12)', opacity: 1, offset: 0.7 }, { transform: 'scale(1)' }],
+    { duration: 420, easing: 'ease-out' }
+  );
+}
+
 function showAnkhBurst() {
   const burst = document.getElementById('ankh-burst');
   burst.innerHTML = '';
@@ -331,8 +364,8 @@ function handleClick(idx, promo = null) {
     if (result.action === 'ankh_placed') {
       ankhHint = null;
       SFX.ankh();
-      if (reviewPly === null) showAnkhBurst();
       render();
+      if (reviewPly === null) { showAnkhBurst(); riseFromAnkh(idx); }
       afterTurn();
     } else if (result.action === 'ankh_invalid') {
       ankhHint = ANKH_HINTS[result.reason];
@@ -351,15 +384,14 @@ function handleClick(idx, promo = null) {
 
   if (result.action === 'select') { SFX.select(); }
   else if (result.action === 'move' || result.action === 'promotion') {
-    if (result.record?.captured) {
-      SFX.capture();
-      const sqEl = squareEl(result.record.to);
-      if (sqEl && reviewPly === null) spawnDust(sqEl, result.record.color);
-    } else {
-      SFX.move();
-    }
+    const { from, to, captured, color } = result.record;
+    if (captured) SFX.capture(); else SFX.move();
     if (result.action === 'promotion' && promo) game.promotePiece(promo);
     render();
+    if (reviewPly === null) {
+      // Sand dust rises once the capturing piece lands
+      slidePiece(from, to, () => { if (captured) spawnDust(squareEl(to), color); });
+    }
     if (game.pendingPromotion) showPromoDialog();
     else afterTurn();
     return;
