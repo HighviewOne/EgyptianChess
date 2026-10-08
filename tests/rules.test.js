@@ -400,3 +400,16 @@ test('invalid or tampered saves are rejected', () => {
   assert.strictEqual(GameState.fromMoveList([{ from: 'x' }]), null);
   assert.ok(GameState.fromMoveList([]));
 });
+
+test('undoStack[n] is the position after n moves (used to review the game)', () => {
+  const g = new GameState();
+  const boards = [JSON.stringify(g.board)];
+  for (const m of ['e2-e4', 'd7-d5', 'e4-d5', 'd8-d5', 'b1-c3']) {
+    play(g, m);
+    boards.push(JSON.stringify(g.board));
+  }
+  g.activateAnkh(); g.clickSquare(sq('d8'));   // Black brings back its Soldier
+  boards.push(JSON.stringify(g.board));
+  assert.strictEqual(g.undoStack.length, g.history.length);
+  g.undoStack.forEach((snap, n) => assert.strictEqual(JSON.stringify(snap.board), boards[n], `after ${n} moves`));
+});

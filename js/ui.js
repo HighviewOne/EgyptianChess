@@ -9,6 +9,14 @@ let flipped  = false;   // Black at the bottom
 let focusIdx = E.rcToIdx(6, 4);   // board square that holds the keyboard tab stop (e2)
 let ankhHint = null;    // temporary status message after an invalid Ankh placement
 let cancelThink = null; // stops the computer's search in progress
+let reviewPly = null;   // while reviewing: how many moves into the game to show; null = live
+
+// The position on screen: a stored snapshot while reviewing, otherwise the live game.
+// undoStack[n] is the position before move n, i.e. after the first n moves.
+function view() {
+  if (reviewPly === null) return game;
+  return { ...game.undoStack[reviewPly], selectedIdx: null, legalMoves: [], ankhMode: false };
+}
 
 // Browser storage can be unavailable (private mode, blocked site data)
 const store = {
@@ -162,10 +170,10 @@ function loadGame() {
 // Board index shown at display position d (0 = top-left)
 const displayToIdx = (d) => flipped ? 63 - d : d;
 
-function squareLabel(i, piece, isLegal) {
+function squareLabel(v, i, piece, isLegal) {
   let label = E.squareName(i) + (E.PYRAMID_SQUARES.has(i) ? ' (Pyramid)' : '');
   if (piece) label += `, ${cap(piece.color)} ${E.PIECE_NAMES[piece.type]}`;
-  if (i === game.selectedIdx) label += ', selected';
+  if (i === v.selectedIdx) label += ', selected';
   if (isLegal) label += piece ? ', capture' : ', legal move';
   return label;
 }
@@ -175,11 +183,13 @@ function renderBoard() {
   const hadFocus = boardEl.contains(document.activeElement);
   boardEl.innerHTML = '';
   document.querySelector('.board-with-labels').classList.toggle('flipped', flipped);
+  boardEl.classList.toggle('reviewing', reviewPly !== null);
+  const v = view();
 
-  const kingCheck = (game.status === 'check' || game.status === 'checkmate')
-    ? E.findKing(game.currentTurn, game.board) : -1;
-  const legalSet = new Set(game.legalMoves.map(m => m.to));
-  const ankhRows = game.currentTurn === E.COLORS.WHITE ? [6, 7] : [0, 1];
+  const kingCheck = (v.status === 'check' || v.status === 'checkmate')
+    ? E.findKing(v.currentTurn, v.board) : -1;
+  const legalSet = new Set(v.legalMoves.map(m => m.to));
+  const ankhRows = v.currentTurn === E.COLORS.WHITE ? [6, 7] : [0, 1];
 
   for (let d = 0; d < 64; d++) {
     const i = displayToIdx(d);
@@ -191,13 +201,13 @@ function renderBoard() {
     sq.dataset.glyph = SQ_GLYPHS[i % SQ_GLYPHS.length];
     sq.tabIndex = i === focusIdx ? 0 : -1;
 
-    const piece = game.board[i];
-    sq.setAttribute('aria-label', squareLabel(i, piece, legalSet.has(i)));
+    const piece = v.board[i];
+    sq.setAttribute('aria-label', squareLabel(v, i, piece, legalSet.has(i)));
     if (E.PYRAMID_SQUARES.has(i)) { sq.classList.add('pyramid'); if (piece) sq.classList.add('occupied'); }
-    if (i === game.selectedIdx) sq.classList.add('selected');
+    if (i === v.selectedIdx) sq.classList.add('selected');
     if (i === kingCheck)        sq.classList.add('in-check');
-    if (i === game.lastFrom)    sq.classList.add('last-move-from');
-    if (i === game.lastTo)      sq.classList.add('last-move-to');
+    if (i === v.lastFrom)    sq.classList.add('last-move-from');
+    if (i === v.lastTo)      sq.classList.add('last-move-to');
 
     if (legalSet.has(i)) {
       const indicator = document.createElement('div');
@@ -205,7 +215,7 @@ function renderBoard() {
       sq.appendChild(indicator);
     }
 
-    if (game.ankhMode && ankhRows.includes(row) && !piece) sq.classList.add('ankh-target');
+    if (v.ankhMode && ankhRows.includes(row) && !piece) sq.classList.add('ankh-target');
 
     if (piece) {
       const pd = document.createElement('div');
@@ -221,7 +231,7 @@ function renderBoard() {
 
 function updatePanelActive() {
   for (const color of [E.COLORS.WHITE, E.COLORS.BLACK]) {
-    document.getElementById(`${color}-panel`).classList.toggle('active', game.currentTurn === color && !game.isOver());
+    document.getElementById(`${color}-panel`).classList.toggle('active', view().currentTurn === color && !game.isOver());
   }
 }
 
@@ -255,7 +265,7 @@ function handleClick(idx, promo = null) {
     if (result.action === 'ankh_placed') {
       ankhHint = null;
       SFX.ankh();
-      showAnkhBurst();
+      if (reviewPly === null) showAnkhBurst();
       render();
       afterTurn();
     } else if (result.action === 'ankh_invalid') {
@@ -278,7 +288,7 @@ function handleClick(idx, promo = null) {
     if (result.record?.captured) {
       SFX.capture();
       const sqEl = squareEl(result.record.to);
-      if (sqEl) spawnDust(sqEl, result.record.color);
+      if (sqEl && reviewPly === null) spawnDust(sqEl, result.record.color);
     } else {
       SFX.move();
     }
@@ -379,6 +389,13 @@ function hideDialogs() {
 function updateStatus() {
   const el = document.getElementById('status-text');
 
+  if (reviewPly !== null) {
+    el.textContent = reviewPly === 0
+      ? 'Reviewing the start — → to step forward, Esc to return'
+      : `Reviewing move ${reviewPly} of ${game.history.length} — ← → to step, Esc to return`;
+    el.className = 'review';
+    return;
+  }
   if (game.ankhMode) {
     const p = game._getAnkhPiece();
     el.textContent = ankhHint
@@ -424,7 +441,7 @@ function updateCaptured() {
     const el  = document.getElementById(`${color}-captured`);
     const opp = color === E.COLORS.WHITE ? E.COLORS.BLACK : E.COLORS.WHITE;
     el.innerHTML = '';
-    const lost = [...game.capturedBy[opp]].sort((a, b) => E.PIECE_VALUES[b.type] - E.PIECE_VALUES[a.type]);
+    const lost = [...view().capturedBy[opp]].sort((a, b) => E.PIECE_VALUES[b.type] - E.PIECE_VALUES[a.type]);
     for (const p of lost) {
       const sp = document.createElement('div');
       sp.className = `cap-piece ${p.color}`;
@@ -445,7 +462,7 @@ function updateAnkhBtns() {
     const opp = color === E.COLORS.WHITE ? E.COLORS.BLACK : E.COLORS.WHITE;
     const hasLost = game.capturedBy[opp].some(p => p.type !== E.PIECES.PHARAOH);
     const canUse  = !game.ankhUsed[color] && isMyTurn && hasLost && color !== computerColor()
-                    && !game.pendingPromotion && !game.isOver();
+                    && !game.pendingPromotion && !game.isOver() && reviewPly === null;
 
     btn.disabled = !canUse;
     if (game.ankhUsed[color]) {
@@ -465,20 +482,50 @@ function updateAnkhBtns() {
 
 function updateMoveLog() {
   const log = document.getElementById('move-log');
+  const shown = reviewPly ?? game.history.length;   // moves played in the position on screen
   log.innerHTML = '';
+  const moveBtn = (i) => {
+    const h = game.history[i];
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = (h.color === 'white' ? 'mw' : 'mb') + (i + 1 === shown ? ' current' : '');
+    b.dataset.ply = i + 1;
+    b.textContent = h.notation;
+    b.setAttribute('aria-label', `Move ${Math.floor(i / 2) + 1}, ${cap(h.color)}: ${h.notation}`);
+    if (i + 1 === shown) b.setAttribute('aria-current', 'step');
+    return b;
+  };
   for (let i = 0; i < game.history.length; i += 2) {
     const row = document.createElement('div');
     row.className = 'mrow';
     const num = document.createElement('span'); num.className = 'mnum'; num.textContent = `${Math.floor(i/2)+1}.`;
-    const w   = document.createElement('span'); w.className = 'mw';   w.textContent   = game.history[i].notation;
-    row.appendChild(num); row.appendChild(w);
-    if (game.history[i+1]) {
-      const b = document.createElement('span'); b.className = 'mb'; b.textContent = game.history[i+1].notation;
-      row.appendChild(b);
-    }
+    row.appendChild(num); row.appendChild(moveBtn(i));
+    if (game.history[i+1]) row.appendChild(moveBtn(i + 1));
     log.appendChild(row);
   }
-  log.scrollTop = log.scrollHeight;
+  const current = log.querySelector('.current');
+  if (reviewPly !== null && current) current.scrollIntoView({ block: 'nearest' });
+  else log.scrollTop = log.scrollHeight;
+
+  const total = game.history.length;
+  document.getElementById('nav-start').disabled = shown === 0;
+  document.getElementById('nav-prev').disabled  = shown === 0;
+  document.getElementById('nav-next').disabled  = shown >= total;
+  document.getElementById('nav-live').disabled  = reviewPly === null;
+}
+
+// Show the position after `ply` moves; the latest move (or null) returns to the live game
+function setReview(ply) {
+  const total = game.history.length;
+  ply = ply === null ? total : Math.max(0, Math.min(total, ply));
+  const next = ply >= total ? null : ply;
+  if (next === reviewPly) return;
+  reviewPly = next;
+  if (reviewPly !== null) {
+    game.selectedIdx = null; game.legalMoves = [];
+    if (game.ankhMode) game.cancelAnkh();
+  }
+  render();
 }
 
 function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
@@ -487,6 +534,7 @@ function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 
 function resetGame() {
   stopThinking();
+  reviewPly = null;
   hideDialogs();
   game.reset();
   ankhHint = null;
@@ -495,6 +543,7 @@ function resetGame() {
 
 function undoMove() {
   stopThinking();
+  reviewPly = null;
   if (!game.undo()) return;
   // Against the computer, take back its reply too so it is your turn again
   if (isComputerTurn() && game.canUndo()) game.undo();
@@ -515,7 +564,9 @@ function toggleAnkh(color) {
 const boardEl = document.getElementById('board');
 boardEl.addEventListener('click', e => {
   const sq = e.target.closest('.square');
-  if (!sq || isComputerTurn()) return;
+  if (!sq) return;
+  if (reviewPly !== null) { setReview(null); return; }   // clicking the board returns to the game
+  if (isComputerTurn()) return;
   focusIdx = Number(sq.dataset.idx);
   handleClick(focusIdx);
 });
@@ -551,9 +602,32 @@ document.getElementById('mute-btn').addEventListener('click', () => {
   store.set('pharaoh-muted', muted ? '1' : '0');
   updateControls();
 });
+document.getElementById('move-log').addEventListener('click', e => {
+  const b = e.target.closest('[data-ply]');
+  if (b) setReview(Number(b.dataset.ply));
+});
+const shownPly = () => reviewPly ?? game.history.length;
+document.getElementById('nav-start').addEventListener('click', () => setReview(0));
+document.getElementById('nav-prev').addEventListener('click', () => setReview(shownPly() - 1));
+document.getElementById('nav-next').addEventListener('click', () => setReview(shownPly() + 1));
+document.getElementById('nav-live').addEventListener('click', () => setReview(null));
+
 document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undoMove(); return; }
+  // ← → Home End step through the moves (the board keeps its own arrow-key focus)
+  const step = { ArrowLeft: -1, ArrowRight: 1 }[e.key];
+  const inBoard = e.target.closest?.('#board') || e.target.tagName === 'SELECT';
+  const dialogOpen = !document.getElementById('promo-dialog').classList.contains('hidden')
+    || !document.getElementById('over-dialog').classList.contains('hidden');
+  if (!inBoard && !dialogOpen && !game.ankhMode && (step || e.key === 'Home' || e.key === 'End')) {
+    e.preventDefault();
+    if (e.key === 'Home') setReview(0);
+    else if (e.key === 'End') setReview(null);
+    else setReview(shownPly() + step);
+    return;
+  }
   if (e.key !== 'Escape') return;
+  if (reviewPly !== null) { setReview(null); return; }
   if (game.ankhMode) { toggleAnkh(game.currentTurn); return; }
   if (!document.getElementById('over-dialog').classList.contains('hidden')) hideDialogs();
 });
