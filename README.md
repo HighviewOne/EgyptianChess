@@ -36,8 +36,8 @@ The Sphinx combines a standard knight's L-jump with short diagonal slides: it ca
 ### ☥ Ankh Resurrection
 Once per game, on your turn, you may spend your move to resurrect the most recently captured piece of your own that is not your Pharaoh, placing it on any empty square on your home two ranks (rows 7–8 for White, rows 1–2 for Black). The placement is illegal if it leaves your Pharaoh in check.
 
-### Pyramid Squares
-The four central squares — **d4, d5, e4, e5** — form the sacred Pyramid Zone. They are visual only (no movement restriction), but their golden glow intensifies when occupied, making them a natural focal point of the middle game.
+### Blessing of the Pyramid
+The four central squares — **d4, d5, e4, e5** — form the sacred Pyramid Zone. A piece standing on one may, in addition to its normal moves, move or capture **one square in any direction**, like the Pharaoh. A blessed Priest can step sideways, a blessed Chariot diagonally, and a blessed Soldier even backward. Their golden glow intensifies when occupied, making them the focal point of the middle game.
 
 ### Other rule changes
 - **No castling** — the Chariot stands alone
@@ -45,7 +45,7 @@ The four central squares — **d4, d5, e4, e5** — form the sacred Pyramid Zone
 - **Promotion** choices: Vizier, Chariot, Priest, or Sphinx
 - **Mate and stalemate** count an unused Ankh: if a resurrection could block or escape, the game goes on
 - **Draws** by threefold repetition, the fifty-move rule (a resurrection resets it, like a capture or Soldier move), or insufficient material (lone Pharaohs or a single Priest, with no Ankh left)
-- **Resurrected pieces** return exactly as lost — a promoted Soldier comes back promoted
+- **Promoted pieces** that are captured are lost — and resurrected — as Soldiers
 
 ---
 

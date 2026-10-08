@@ -297,3 +297,66 @@ test('computer knows about repetition: a lost side takes the threefold draw', ()
   play(g, 'h7-h8');
   assert.strictEqual(g.drawReason, 'threefold repetition');
 });
+
+// ── Pyramid blessing & promoted resurrection ───────────────────────────────
+
+const targets = (board, from) => E.getRawMoves(sq(from), board, null).map(m => E.squareName(m.to)).sort();
+
+test('Blessing of the Pyramid: pieces on d4–e5 may also step one square any way', () => {
+  const b = new Array(64).fill(null);
+  b[sq('d4')] = { type: 'sphinx', color: 'white' };
+  b[sq('h1')] = { type: 'chariot', color: 'white' };
+  b[sq('e5')] = { type: 'chariot', color: 'black' };
+  // Orthogonal single steps are normally impossible for a Sphinx
+  for (const s of ['d5', 'd3', 'c4', 'e4']) assert.ok(targets(b, 'd4').includes(s), s);
+  // Black Chariot on e5 gains diagonal steps, including capturing onto d4
+  for (const s of ['d4', 'f6', 'd6', 'f4']) assert.ok(targets(b, 'e5').includes(s), s);
+  // Off the Pyramid there is no blessing
+  assert.ok(!targets(b, 'h1').includes('g2'));
+});
+
+test('blessed Soldiers can step sideways and back', () => {
+  const b = new Array(64).fill(null);
+  b[sq('e4')] = { type: 'soldier', color: 'white' };
+  assert.strictEqual(targets(b, 'e4').join(), 'd3,d4,d5,e3,e5,f3,f4,f5');
+});
+
+test('a blessed piece gives check with its step', () => {
+  const g = emptyGame([
+    ['e1', 'pharaoh', 'white'], ['e4', 'priest', 'white'],
+    ['f4', 'pharaoh', 'black'],
+  ], 'black');
+  assert.ok(E.isInCheck('black', g.board)); // a Priest alone could never attack f4 from e4
+  assert.ok(!E.isInCheck('black', emptyGame([
+    ['e1', 'pharaoh', 'white'], ['b4', 'priest', 'white'], ['f4', 'pharaoh', 'black'],
+  ]).board));
+});
+
+test('a captured promoted piece is lost, and resurrected, as a Soldier', () => {
+  const g = emptyGame([
+    ['a7', 'soldier', 'white'], ['e1', 'pharaoh', 'white'],
+    ['h8', 'pharaoh', 'black'], ['b7', 'chariot', 'black'],
+  ]);
+  play(g, 'a7-a8');
+  g.promotePiece('vizier');
+  assert.ok(g.board[sq('a8')].promoted);
+  const r = play(g, 'b7-b8', 'e1-d1', 'b8-a8');
+  assert.strictEqual(r.record.captured, 'vizier');           // the log shows what was taken
+  assert.strictEqual(g.capturedBy.black.at(-1).type, 'soldier'); // the tray and Ankh see a Soldier
+  play(g, 'd1-e1', 'a8-a2');
+  // White resurrects: it comes back as a Soldier
+  g.activateAnkh();
+  assert.strictEqual(g.clickSquare(sq('c2')).action, 'ankh_placed');
+  assert.strictEqual(JSON.stringify(g.board[sq('c2')]), '{"type":"soldier","color":"white"}');
+});
+
+test('computer search state also returns promoted pieces as Soldiers', () => {
+  const g = emptyGame([
+    ['a8', 'vizier', 'white'], ['e1', 'pharaoh', 'white'],
+    ['h8', 'pharaoh', 'black'], ['b8', 'chariot', 'black'],
+  ], 'black');
+  g.board[sq('a8')].promoted = true;
+  const state = AI.fromGame(g);
+  const t = AI.generate(state).find(t => t.from === sq('b8') && t.move.to === sq('a8'));
+  assert.strictEqual(JSON.stringify(AI.apply(state, t).lost.white), '["soldier"]');
+});
