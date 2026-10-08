@@ -659,8 +659,8 @@ body::after {
   padding: 5px 10px;
   display: flex;
   flex-direction: column;
-  min-height: 56px;
-  max-height: 56px;
+  min-height: 84px;
+  max-height: 120px;
   overflow: hidden;
 }
 .log-box h4 {
@@ -679,6 +679,35 @@ body::after {
 .mnum { color: var(--stone-light); }
 .mw   { color: var(--gold-bright); }
 .mb   { color: var(--sand-mid); }
+#move-log button {
+  font: inherit; text-align: left;
+  background: none; border: 0; padding: 0 3px; margin: 0;
+  border-radius: 2px;
+  cursor: pointer;
+  justify-self: start;
+}
+#move-log button:hover { background: rgba(245,213,116,0.12); }
+#move-log button.current { background: var(--gold-deep); color: var(--ink); }
+#move-log button:focus-visible { outline: 2px solid var(--turquoise); outline-offset: 1px; }
+
+/* Step through earlier positions */
+.log-nav { display: flex; justify-content: center; gap: 4px; margin-top: 4px; }
+.log-nav button {
+  font-size: 11px; line-height: 1;
+  padding: 3px 9px;
+  background: rgba(245,213,116,0.06);
+  border: 1px solid var(--stone-mid);
+  border-radius: 2px;
+  color: var(--gold-bright);
+  cursor: pointer;
+}
+.log-nav button:not(:disabled):hover { background: rgba(245,213,116,0.18); }
+.log-nav button:disabled { opacity: 0.3; cursor: default; }
+.log-nav button:focus-visible { outline: 2px solid var(--turquoise); outline-offset: 1px; }
+
+/* Board while showing an earlier position */
+.board.reviewing { filter: sepia(0.45) brightness(0.9); }
+#status-text.review { color: var(--sand-pale); }
 
 /* ── Rules ── */
 .rules-box {
