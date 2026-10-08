@@ -1,7 +1,7 @@
 // Browser tests: `npm run test:e2e` (first time: `npm install && npx playwright install chromium firefox`)
 const { defineConfig, devices } = require('@playwright/test');
 
-const PORT = 4173;
+const PORT = 4183;   // not 4173: EgyptianCalculator's tests use that
 
 module.exports = defineConfig({
   testDir: 'tests/e2e',
