@@ -115,6 +115,7 @@
           <button class="btn" id="undo-btn" title="Take back the last move (Ctrl+Z)" disabled>↶ Take Back</button>
           <button class="btn" id="flip-btn" title="Turn the board around">⇅ Flip Board</button>
           <button class="btn" id="mute-btn" aria-pressed="false">🔊 Sound On</button>
+          <button class="btn" id="share-btn" title="Send this game to a friend as a link">🔗 Share Game</button>
         </div>
         <div class="log-box">
           <h4>Sacred Scroll</h4>
@@ -174,6 +175,20 @@
     <div class="promo-btns" id="promo-pieces"></div>
     <div class="over-actions">
       <button class="btn" id="promo-undo-btn">↶ Take Back</button>
+    </div>
+  </div>
+</div>
+
+<!-- Share dialog -->
+<div class="dialog-overlay hidden" id="share-dialog" role="dialog" aria-modal="true" aria-labelledby="share-title">
+  <div class="dialog-box">
+    <div class="crest-large">𓂀</div>
+    <h3 id="share-title">Share This Game</h3>
+    <p class="over-message">Send this link to your opponent. It opens this exact position — they make their move and send you a link back.</p>
+    <input class="share-url" id="share-url" type="text" readonly aria-label="Game link">
+    <div class="over-actions">
+      <button class="btn" id="share-copy">Copy Link</button>
+      <button class="btn" id="share-close">Close</button>
     </div>
   </div>
 </div>

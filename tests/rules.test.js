@@ -413,3 +413,25 @@ test('undoStack[n] is the position after n moves (used to review the game)', () 
   assert.strictEqual(g.undoStack.length, g.history.length);
   g.undoStack.forEach((snap, n) => assert.strictEqual(JSON.stringify(snap.board), boards[n], `after ${n} moves`));
 });
+
+// ── Share links ────────────────────────────────────────────────────────────
+
+test('share codes round-trip moves, promotions, and Ankh placements', () => {
+  const g = new GameState();
+  play(g, 'b2-b4', 'a7-a5', 'b4-a5', 'h7-h6', 'a5-a6', 'h6-h5', 'a6-b7', 'h5-h4', 'b7-a8');
+  g.promotePiece('sphinx');
+  play(g, 'b8-c6', 'g1-f3');
+  g.activateAnkh(); g.clickSquare(sq('b8'));   // Black brings back the Chariot taken on a8
+  const code = g.toShareCode();
+  assert.strictEqual(code, 'b2b4.a7a5.b4a5.h7h6.a5a6.h6h5.a6b7.h5h4.b7a8s.b8c6.g1f3.-b8');
+  const back = GameState.fromShareCode(code);
+  assert.strictEqual(JSON.stringify(back.board), JSON.stringify(g.board));
+  assert.strictEqual(back.toShareCode(), code);
+  assert.strictEqual(GameState.fromShareCode('').history.length, 0);
+});
+
+test('malformed or illegal share codes are rejected', () => {
+  for (const bad of ['e2e5', 'e2e4.e2e4', 'e2e4.d7d5x', 'e9e4', 'hello', '-e2', 'e2e4..d7d5', null]) {
+    assert.strictEqual(GameState.fromShareCode(bad), null, String(bad));
+  }
+});

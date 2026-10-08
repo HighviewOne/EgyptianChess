@@ -613,6 +613,20 @@ body::after {
   outline-offset: 2px;
 }
 .control-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-content: start; }
+.control-btns #share-btn { grid-column: span 2; }
+.share-url {
+  width: 100%; max-width: 440px;
+  box-sizing: border-box;
+  margin-top: 6px;
+  padding: 8px 10px;
+  font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 12px;
+  background: var(--bg-deep);
+  color: var(--gold-bright);
+  border: 1px solid var(--gold-deep);
+  border-radius: 2px;
+}
+.share-url:focus-visible { outline: 2px solid var(--turquoise); outline-offset: 2px; }
+#status-text.notice { color: var(--turquoise); }
 .btn:not(:disabled):hover {
   background: linear-gradient(180deg, var(--gold-deep), var(--stone-mid));
   color: #fff;
