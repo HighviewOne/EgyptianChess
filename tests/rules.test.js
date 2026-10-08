@@ -435,3 +435,38 @@ test('malformed or illegal share codes are rejected', () => {
     assert.strictEqual(GameState.fromShareCode(bad), null, String(bad));
   }
 });
+
+// ── Expert search ──────────────────────────────────────────────────────────
+
+test('position fingerprints: same position, same hash; side to move, en passant, and Ankh matter', () => {
+  const a = new GameState(); play(a, 'g1-f3', 'g8-f6', 'b1-c3');
+  const b = new GameState(); play(b, 'b1-c3', 'g8-f6', 'g1-f3');
+  assert.strictEqual(AI.hashState(AI.fromGame(a)), AI.hashState(AI.fromGame(b)));
+
+  const s = AI.fromGame(a);
+  assert.notStrictEqual(AI.hashState(s), AI.hashState({ ...s, turn: 'white' }));
+  assert.notStrictEqual(AI.hashState(s), AI.hashState({ ...s, ep: 20 }));
+  assert.notStrictEqual(AI.hashState(s), AI.hashState({ ...s, ankhUsed: { white: true, black: false } }));
+});
+
+test('Expert search memory gives exactly the same scores as plain search', () => {
+  const positions = [
+    [],
+    ['e2-e4', 'e7-e5', 'g1-f3', 'b8-c6', 'f1-c4', 'g8-f6'],
+    ['e2-e4', 'd7-d5', 'e4-d5', 'd8-d5', 'b1-c3', 'd5-a5'],   // White can resurrect
+    ['d2-d4', 'e7-e5', 'd4-e5', 'f7-f6', 'e5-f6', 'g8-f6'],
+  ];
+  for (const moves of positions) {
+    const g = new GameState();
+    play(g, ...moves);
+    const plain = AI.analyse(g, 3).map(r => `${r.key}:${r.score}`).sort().join();
+    const withMemory = AI.analyse(g, 3, { memory: true }).map(r => `${r.key}:${r.score}`).sort().join();
+    assert.strictEqual(withMemory, plain, moves.join(' ') || 'start');
+  }
+});
+
+test('Expert finds the same mate in one', () => {
+  const g = emptyGame(backRank, 'black');
+  const t = AI.bestTurn(g, 3, { quiesce: true, memory: true });
+  assert.strictEqual(E.squareName(t.from) + E.squareName(t.move.to), 'b8b1');
+});
