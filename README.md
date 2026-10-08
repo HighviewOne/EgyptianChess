@@ -61,7 +61,8 @@ The four central squares — **d4, d5, e4, e5** — form the sacred Pyramid Zone
 
 - **Custom SVG pieces** — hand-crafted Egyptian silhouettes, styled via CSS `currentColor`
 - **Hi-fi visual design** — carved sandstone board, hieroglyph frieze, ambient wall texture, vignette
-- **Particle effects** — 12-particle sand-dust burst on capture; cinematic 10-ray ankh burst on resurrection
+- **Piece motion** — pieces glide to their squares (yours and the computer's); resurrected pieces grow out of the ground; instant when your system asks for reduced motion
+- **Particle effects** — 12-particle sand-dust burst as a capturing piece lands; cinematic 10-ray ankh burst on resurrection
 - **WebAudio sounds** — procedural oscillator tones for select, move, capture, check, ankh, and victory; no audio files
 - **Move log** — long algebraic notation with unique Egyptian symbols (Ph Pharaoh, V Vizier, C Chariot, Pr Priest, S Sphinx; Soldiers unmarked), plus `+` check, `#` mate, `=V` promotion, `☥` resurrection
 - **Computer opponent** — Easy, Medium, or Hard; play either side. It understands the Ankh (and will resurrect to escape mate) and steers away from repetition draws when ahead. On the live site the search runs in a background thread so the page never stalls
