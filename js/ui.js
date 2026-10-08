@@ -139,7 +139,24 @@ function render() {
   updateMoveLog();
   updatePanelActive();
   updateControls();
+  saveGame();
   maybeComputerMove();
+}
+
+// ── Save / restore ───────────────────────────────────────────────────────────
+
+const SAVE_KEY = 'pharaoh-game';
+
+function saveGame() {
+  store.set(SAVE_KEY, JSON.stringify({ version: 1, moves: game.moveList() }));
+}
+
+function loadGame() {
+  try {
+    const saved = JSON.parse(store.get(SAVE_KEY));
+    if (saved?.version === 1) return GameState.fromMoveList(saved.moves);
+  } catch (_) {}
+  return null;
 }
 
 // Board index shown at display position d (0 = top-left)
@@ -543,5 +560,6 @@ document.addEventListener('keydown', e => {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
-game = new GameState();
+game = loadGame() || new GameState();
 render();
+if (game.pendingPromotion) showPromoDialog();

@@ -360,3 +360,43 @@ test('computer search state also returns promoted pieces as Soldiers', () => {
   const t = AI.generate(state).find(t => t.from === sq('b8') && t.move.to === sq('a8'));
   assert.strictEqual(JSON.stringify(AI.apply(state, t).lost.white), '["soldier"]');
 });
+
+// ── Save / restore ─────────────────────────────────────────────────────────
+
+test('a saved move list replays to the identical game', () => {
+  const g = new GameState();
+  play(g, 'e2-e4', 'a7-a6', 'e4-e5', 'd7-d5', 'e5-d6');          // en passant
+  play(g, 'c7-d6', 'd1-g4', 'c8-g4');                              // captures: White lost a Vizier
+  g.activateAnkh(); g.clickSquare(sq('d1'));                      // resurrection
+  const restored = GameState.fromMoveList(JSON.parse(JSON.stringify(g.moveList())));
+  for (const k of ['board', 'currentTurn', 'capturedBy', 'ankhUsed', 'epTarget', 'status', 'history', 'positionCounts', 'halfmoveClock']) {
+    assert.strictEqual(JSON.stringify(restored[k]), JSON.stringify(g[k]), k);
+  }
+  assert.strictEqual(restored.undoStack.length, g.undoStack.length);
+  restored.undo();
+  assert.strictEqual(restored.ankhUsed.white, false);
+});
+
+test('promotions, including one still awaiting a choice, survive a save', () => {
+  // Saves replay from the initial position, so play a real game that promotes twice
+  const real = new GameState();
+  play(real, 'b2-b4', 'a7-a5', 'b4-a5', 'h7-h6', 'a5-a6', 'h6-h5', 'a6-b7', 'h5-h4', 'b7-a8');
+  real.promotePiece('chariot');
+  play(real, 'h4-h3', 'g2-h3', 'g7-g5', 'h3-h4', 'g5-g4', 'h4-h5', 'g4-g3', 'h5-h6', 'g3-f2', 'e1-f2', 'b8-c6', 'h6-h7', 'c6-e5', 'h7-g8');
+  assert.ok(real.pendingPromotion);
+  const list = real.moveList();
+  assert.strictEqual(list[8].promo, 'chariot');
+  const restored = GameState.fromMoveList(list);
+  assert.ok(restored.pendingPromotion);
+  assert.strictEqual(restored.board[sq('a8')].type, 'chariot');
+  assert.ok(restored.board[sq('a8')].promoted);
+});
+
+test('invalid or tampered saves are rejected', () => {
+  assert.strictEqual(GameState.fromMoveList(null), null);
+  assert.strictEqual(GameState.fromMoveList([{ from: sq('e2'), to: sq('e5') }]), null);   // illegal
+  assert.strictEqual(GameState.fromMoveList([{ from: sq('e7'), to: sq('e5') }]), null);   // wrong side
+  assert.strictEqual(GameState.fromMoveList([{ ankh: sq('e2') }]), null);                // nothing lost
+  assert.strictEqual(GameState.fromMoveList([{ from: 'x' }]), null);
+  assert.ok(GameState.fromMoveList([]));
+});

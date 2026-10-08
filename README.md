@@ -65,6 +65,7 @@ The four central squares — **d4, d5, e4, e5** — form the sacred Pyramid Zone
 - **WebAudio sounds** — procedural oscillator tones for select, move, capture, check, ankh, and victory; no audio files
 - **Move log** — long algebraic notation with unique Egyptian symbols (Ph Pharaoh, V Vizier, C Chariot, Pr Priest, S Sphinx; Soldiers unmarked), plus `+` check, `#` mate, `=V` promotion, `☥` resurrection
 - **Computer opponent** — Easy, Medium, or Hard; play either side. It understands the Ankh (and will resurrect to escape mate) and steers away from repetition draws when ahead. On the live site the search runs in a background thread so the page never stalls
+- **Autosave** — the game in progress survives a refresh or closed tab (saved in your browser as its move list and replayed on load)
 - **Take back, flip, mute** — unlimited undo (Ctrl+Z), board flip for Black's view, sound toggle that remembers your choice
 - **Keyboard & screen reader friendly** — arrow keys move around the board, Enter selects; squares, captures, and status are announced
 - **Responsive** — collapses to single column below 1060 px; smaller squares below 600 px
