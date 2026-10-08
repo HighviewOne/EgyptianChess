@@ -1,0 +1,12 @@
+{
+  "name": "egyptian-chess",
+  "private": true,
+  "description": "Dev tooling only — the game itself has no dependencies",
+  "scripts": {
+    "test": "node --test",
+    "test:e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}

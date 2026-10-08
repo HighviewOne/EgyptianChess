@@ -89,11 +89,21 @@ Or play instantly: **[highviewone.github.io/EgyptianChess](https://highviewone.g
 
 ### Running the tests
 
-The engine and game rules have a small test suite that uses Node's built-in runner (Node 18+, no install step):
+**Rules tests** use Node's built-in runner (Node 18+, no install step):
 
 ```bash
 node --test
 ```
+
+**Browser tests** play the real page in Chrome and Firefox with [Playwright](https://playwright.dev) — every button, dialog, the computer opponent, autosave, review, and share links. They're a development-only dependency; the game itself still has none:
+
+```bash
+npm install
+npx playwright install chromium firefox   # first time only
+npm run test:e2e
+```
+
+Both suites run on GitHub for every push and pull request.
 
 ---
 
@@ -112,7 +122,8 @@ EgyptianChess/
 │   ├── ai-worker.js    # Runs the search off the main thread when served over http(s)
 │   └── ui.js           # Rendering, WebAudio, particle FX, event handling
 ├── tests/
-│   └── rules.test.js   # node --test suite for engine + GameState
+│   ├── rules.test.js   # node --test suite for engine, GameState, and the computer
+│   └── e2e/            # Playwright browser tests (Chrome + Firefox)
 └── docs/
     ├── banner.svg      # README banner
     ├── screenshot.png  # README screenshot
