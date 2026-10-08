@@ -73,7 +73,7 @@ The four central squares — **d4, d5, e4, e5** — form the sacred Pyramid Zone
 - **Take back, flip, mute** — unlimited undo (Ctrl+Z), board flip for Black's view, sound toggle that remembers your choice
 - **Keyboard & screen reader friendly** — arrow keys move around the board, Enter selects; squares, captures, and status are announced
 - **Responsive** — collapses to single column below 1060 px; smaller squares below 600 px
-- **Zero dependencies** — vanilla HTML/CSS/JS, runs from the filesystem with no server
+- **Zero dependencies** — vanilla HTML/CSS/JS, no build step; opening `index.html` from disk plays the full game (offline install and the computer's background thread need it served over http — see below)
 
 ---
 
@@ -88,6 +88,12 @@ xdg-open index.html   # Linux
 ```
 
 Or play instantly: **[highviewone.github.io/EgyptianChess](https://highviewone.github.io/EgyptianChess/)**
+
+Opened from disk, everything plays, but browsers don't allow background threads or offline caching for `file://` pages: the computer thinks on the page itself (Expert is held to Hard's 1.6 s so the page doesn't freeze) and the app can't be installed. To get the live-site behaviour locally, serve the folder:
+
+```bash
+python3 -m http.server 8000   # then open http://localhost:8000
+```
 
 ### Running the tests
 
@@ -128,7 +134,10 @@ EgyptianChess/
 │   └── ui.js           # Rendering, WebAudio, particle FX, event handling
 ├── tests/
 │   ├── rules.test.js   # node --test suite for engine, GameState, and the computer
-│   └── e2e/            # Playwright browser tests (Chrome + Firefox)
+│   └── e2e/            # Playwright browser tests (Chrome + Firefox) + tiny static server
+├── package.json        # Dev-only: Playwright for the browser tests (the game needs nothing)
+├── playwright.config.js
+├── .github/            # CI workflow (rules + browser tests), issue and PR templates
 └── docs/
     ├── banner.svg      # README banner
     ├── screenshot.png  # README screenshot
@@ -139,17 +148,17 @@ EgyptianChess/
 
 ## Browser Support
 
-Requires a modern browser with ES6 classes, Web Animations API, and WebAudio API.
+Requires a modern browser with ES2020 JavaScript, the Web Animations API, and WebAudio. Installing and offline play also need service workers.
 
-| Chrome | Firefox | Safari | Edge |
-|--------|---------|--------|------|
-| 90+ ✓ | 90+ ✓ | 15+ ✓ | 90+ ✓ |
+| Chrome / Edge | Firefox | Safari |
+|---------------|---------|--------|
+| ✓ tested on every change | ✓ tested on every change | not tested yet — should work in a current version |
 
 ---
 
 ## Contributing
 
-Bug reports and feature ideas are welcome — see the [issue templates](.github/ISSUE_TEMPLATE/) to get started. For code changes, please check the [PR template](.github/pull_request_template.md) testing checklist before opening a pull request.
+Bug reports and feature ideas are welcome — see the [issue templates](.github/ISSUE_TEMPLATE/) to get started. For code changes, run the tests above and check the [PR template](.github/pull_request_template.md) before opening a pull request; both test suites also run automatically on every pull request.
 
 ---
 
