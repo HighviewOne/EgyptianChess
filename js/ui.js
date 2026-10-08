@@ -32,7 +32,7 @@ let muted = store.get('pharaoh-muted') === '1';
 
 // ── Opponent ─────────────────────────────────────────────────────────────────
 
-let opponentMode = store.get('pharaoh-opponent') || 'human';   // human | easy | medium | hard
+let opponentMode = store.get('pharaoh-opponent') || 'human';   // human | easy | medium | hard | expert
 let humanSide = store.get('pharaoh-side') === 'black' ? 'black' : 'white';
 flipped = humanSide === 'black';
 
@@ -511,7 +511,8 @@ function updateStatus() {
     return;
   }
   if (cancelThink) {
-    el.textContent = `${game.status === 'check' ? '⚔ Check! ' : ''}𓂀 The computer is thinking…`;
+    const depth = opponentMode === 'expert' ? 'thinking deeply' : 'thinking';
+    el.textContent = `${game.status === 'check' ? '⚔ Check! ' : ''}𓂀 The computer is ${depth}…`;
     el.className = 'thinking';
     return;
   }

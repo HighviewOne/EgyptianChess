@@ -39,3 +39,12 @@ test('the board ignores clicks while the computer thinks', async ({ page }) => {
   expect(selected).toBeNull();
   await expect(status(page)).toHaveText(/thinking/i);
 });
+
+test('Expert opponent replies', async ({ page }) => {
+  await page.goto('/');
+  await page.selectOption('#opponent-select', 'expert');
+  await play(page, 'e2-e4');
+  await expect(status(page)).toHaveText(/thinking deeply/i);
+  await waitForReply(page, 2);
+  await expect(status(page)).toHaveText(/White to move/i);
+});

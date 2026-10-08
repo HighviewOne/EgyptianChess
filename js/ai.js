@@ -129,11 +129,58 @@ function evaluate(state) {
   return score;
 }
 
+// ── Position fingerprints (Zobrist hashing) for the transposition table ─────
+
+const ZOBRIST = (() => {
+  let seed = 0x9e3779b9;
+  const next = () => { seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5; return seed >>> 0; };
+  const table = (n) => Array.from({ length: n }, () => [next(), next()]);
+  return {
+    piece: table(64 * 24),   // square × (colour, type, promoted)
+    turn: next(), turn2: next(),
+    ep: table(65),
+    ankh: table(2 * 8)       // colour × (used, or top lost type, or nothing)
+  };
+})();
+const TYPE_INDEX = { pharaoh: 0, vizier: 1, chariot: 2, priest: 3, sphinx: 4, soldier: 5 };
+
+// A 53-bit fingerprint: two 32-bit Zobrist halves folded into one safe integer
+function hashState(state) {
+  let h1 = 0, h2 = 0;
+  const { board } = state;
+  for (let i = 0; i < 64; i++) {
+    const p = board[i];
+    if (!p) continue;
+    const z = ZOBRIST.piece[i * 24 + (p.color === COLORS.WHITE ? 0 : 12) + TYPE_INDEX[p.type] * 2 + (p.promoted ? 1 : 0)];
+    h1 ^= z[0]; h2 ^= z[1];
+  }
+  if (state.turn === COLORS.BLACK) { h1 ^= ZOBRIST.turn; h2 ^= ZOBRIST.turn2; }
+  const e = ZOBRIST.ep[state.ep ?? 64];
+  h1 ^= e[0]; h2 ^= e[1];
+  for (const [ci, color] of [[0, COLORS.WHITE], [1, COLORS.BLACK]]) {
+    const ap = ankhPiece(state, color);
+    const slot = state.ankhUsed[color] ? 7 : ap ? TYPE_INDEX[ap.type] + 1 : 0;
+    const z = ZOBRIST.ankh[ci * 8 + slot];
+    h1 ^= z[0]; h2 ^= z[1];
+  }
+  return (h1 >>> 0) * 2097152 + ((h2 >>> 0) & 0x1fffff);
+}
+
+const turnKey = (t) => t.kind === 'ankh' ? 4096 + t.to : t.from * 64 + t.move.to;
+const isQuiet = (t) => t.order <= 0;   // not a capture or promotion
+
 // ── Search ──────────────────────────────────────────────────────────────────
 
 class Timeout extends Error {}
 
-function makeSearcher(deadline) {
+const EXACT = 0, LOWER = 1, UPPER = 2;
+const TT_LIMIT = 400000;
+// Mate scores are stored relative to the node so they stay right at any depth
+const toTT   = (s, ply) => s > MATE - 1000 ? s + ply : s < -MATE + 1000 ? s - ply : s;
+const fromTT = (s, ply) => s > MATE - 1000 ? s - ply : s < -MATE + 1000 ? s + ply : s;
+
+// memory = { tt: Map, killers: [], history: Map } shared across depths of one search, or null
+function makeSearcher(deadline, memory = null) {
   let nodes = 0;
   const tick = () => {
     if ((++nodes & 511) === 0 && Date.now() > deadline) throw new Timeout();
@@ -157,17 +204,65 @@ function makeSearcher(deadline) {
     return alpha;
   }
 
+  // Best previous move first, then captures, then killer moves, then quiet moves by history
+  function orderTurns(turns, ttMove, ply) {
+    const killers = memory.killers[ply] || [];
+    for (const t of turns) {
+      const k = turnKey(t);
+      t.rank = k === ttMove ? 1e9
+        : !isQuiet(t) ? 1e7 + t.order
+        : k === killers[0] ? 9e6 : k === killers[1] ? 8e6
+        : (memory.history.get(k) || 0);
+    }
+    return turns.sort((a, b) => b.rank - a.rank);
+  }
+
   function negamax(state, depth, alpha, beta, ply, useQuiesce) {
     tick();
     if (depth <= 0) return useQuiesce ? quiesce(state, alpha, beta, 6) : evaluate(state);
-    const turns = generate(state);
+
+    let key = 0, ttMove = null;
+    const alphaIn = alpha;
+    if (memory) {
+      key = hashState(state);
+      const entry = memory.tt.get(key);
+      if (entry) {
+        ttMove = entry.move;
+        if (entry.depth >= depth) {
+          const s = fromTT(entry.score, ply);
+          if (entry.flag === EXACT) return s;
+          if (entry.flag === LOWER && s >= beta) return s;
+          if (entry.flag === UPPER && s <= alpha) return s;
+        }
+      }
+    }
+
+    let turns = generate(state);
     if (turns.length === 0) return E.isInCheck(state.turn, state.board) ? -MATE + ply : 0;
-    let best = -Infinity;
+    if (memory) turns = orderTurns(turns, ttMove, ply);
+
+    let best = -Infinity, bestTurn = null;
     for (const t of turns) {
       const score = -negamax(apply(state, t), depth - 1, -beta, -alpha, ply + 1, useQuiesce);
-      if (score > best) best = score;
+      if (score > best) { best = score; bestTurn = t; }
       if (score > alpha) alpha = score;
-      if (alpha >= beta) break;
+      if (alpha >= beta) {
+        if (memory && isQuiet(t)) {
+          const k = turnKey(t);
+          const killers = memory.killers[ply] || (memory.killers[ply] = []);
+          if (killers[0] !== k) { killers[1] = killers[0]; killers[0] = k; }
+          memory.history.set(k, (memory.history.get(k) || 0) + depth * depth);
+        }
+        break;
+      }
+    }
+
+    if (memory) {
+      if (memory.tt.size > TT_LIMIT) memory.tt.clear();
+      memory.tt.set(key, {
+        depth, score: toTT(best, ply), move: turnKey(bestTurn),
+        flag: best <= alphaIn ? UPPER : best >= beta ? LOWER : EXACT
+      });
     }
     return best;
   }
@@ -191,8 +286,15 @@ function makeSearcher(deadline) {
 const LEVELS = {
   easy:   { maxDepth: 1, timeMs: 300,  quiesce: false, noise: 90 },
   medium: { maxDepth: 2, timeMs: 800,  quiesce: true,  noise: 15 },
-  hard:   { maxDepth: 6, timeMs: 1600, quiesce: true,  noise: 0 }
+  hard:   { maxDepth: 6, timeMs: 1600, quiesce: true,  noise: 0 },
+  // Remembers positions it has analysed and orders moves by what refuted before,
+  // so it reaches deeper in the time; and it is given more time
+  expert: { maxDepth: 12, timeMs: 4000, quiesce: true, noise: 0, memory: true }
 };
+// On the page's own thread (pages opened from disk) a long think would freeze it
+const MAIN_THREAD_MS = 1600;
+const inWorker = typeof WorkerGlobalScope !== 'undefined' && self instanceof WorkerGlobalScope;
+const newMemory = () => ({ tt: new Map(), killers: [], history: new Map() });
 
 // Root turns that would reach a position for the third time end the game in a draw
 function repetitionDraws(game, state, turns) {
@@ -212,8 +314,8 @@ function repetitionDraws(game, state, turns) {
 }
 
 // Synchronous search, used by think() one depth at a time and directly by tests
-function searchDepth(state, depth, opts, deadline, rootTurns, drawTurns) {
-  return makeSearcher(deadline).root(state, rootTurns, depth, opts.quiesce, opts.noise > 0, drawTurns);
+function searchDepth(state, depth, opts, deadline, rootTurns, drawTurns, memory = null) {
+  return makeSearcher(deadline, memory).root(state, rootTurns, depth, opts.quiesce, opts.noise > 0, drawTurns);
 }
 
 function pick(scored, noise, rand = Math.random) {
@@ -230,7 +332,16 @@ function bestTurn(game, depth, opts = { quiesce: true }) {
   const state = fromGame(game);
   const turns = generate(state);
   if (!turns.length) return null;
-  return pick(searchDepth(state, depth, opts, Infinity, turns, repetitionDraws(game, state, turns)), 0);
+  return pick(searchDepth(state, depth, opts, Infinity, turns, repetitionDraws(game, state, turns),
+    opts.memory ? newMemory() : null), 0);
+}
+
+// Every root turn's exact score at a fixed depth (tests compare searches with this)
+function analyse(game, depth, { memory = false } = {}) {
+  const state = fromGame(game);
+  const turns = generate(state);
+  return searchDepth(state, depth, { quiesce: true, noise: 1 }, Infinity, turns, new Set(), memory ? newMemory() : null)
+    .map(({ t, score }) => ({ key: turnKey(t), score }));
 }
 
 // Iterative deepening that yields to the browser between depths so the page stays live.
@@ -240,9 +351,12 @@ function think(game, level, done) {
   const state = fromGame(game);
   let turns = generate(state);
   const drawTurns = repetitionDraws(game, state, turns);
+  const memory = opts.memory ? newMemory() : null;
+  const budget = inWorker || typeof window === 'undefined' || !window.document
+    ? opts.timeMs : Math.min(opts.timeMs, MAIN_THREAD_MS);
   let cancelled = false;
   const started = Date.now();
-  const deadline = started + opts.timeMs;
+  const deadline = started + budget;
   let lastScored = null;
   let depth = 1;
 
@@ -256,7 +370,7 @@ function think(game, level, done) {
     if (cancelled) return;
     if (turns.length <= 1) return finish();
     try {
-      lastScored = searchDepth(state, depth, opts, deadline, turns, drawTurns);
+      lastScored = searchDepth(state, depth, opts, deadline, turns, drawTurns, memory);
       // Re-order so the best turn so far is searched first next time
       const order = new Map(lastScored.map(s => [s.t, s.score]));
       turns = [...turns].sort((a, b) => order.get(b) - order.get(a));
@@ -265,7 +379,8 @@ function think(game, level, done) {
       return finish();
     }
     const mateFound = lastScored.some(s => s.score > MATE - 100);
-    if (depth >= opts.maxDepth || mateFound || Date.now() > deadline) return finish();
+    // The next depth takes several times longer; past half the budget it would rarely finish
+    if (depth >= opts.maxDepth || mateFound || Date.now() - started > budget / 2) return finish();
     depth++;
     setTimeout(step, 0);
   };
@@ -298,5 +413,5 @@ function thinkInBackground(game, level, done) {
   return () => { if (worker) { worker.terminate(); worker = null; } };
 }
 
-window.PharaohAI = { LEVELS, think, thinkInBackground, bestTurn, evaluate, generate, apply, fromGame };
+window.PharaohAI = { LEVELS, think, thinkInBackground, bestTurn, analyse, hashState, evaluate, generate, apply, fromGame };
 })();
