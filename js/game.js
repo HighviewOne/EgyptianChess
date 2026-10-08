@@ -8,6 +8,10 @@ const {
 
 const opponent = (color) => color === COLORS.WHITE ? COLORS.BLACK : COLORS.WHITE;
 const ankhRows = (color) => color === COLORS.WHITE ? [6, 7] : [0, 1];
+// A captured promoted piece is lost (and resurrected) as the Soldier it was born
+const lostAs = (piece) => piece.promoted
+  ? { type: PIECES.SOLDIER, color: piece.color }
+  : { type: piece.type, color: piece.color };
 
 // Fields that make up a position; snapshotted for undo
 const SNAPSHOT_KEYS = [
@@ -92,7 +96,7 @@ class GameState {
       notation: window.PharaohEngine.notation(from, move.to, piece, captured)
     };
 
-    if (captured) this.capturedBy[this.currentTurn].push({ ...captured });
+    if (captured) this.capturedBy[this.currentTurn].push(lostAs(captured));
     if (epIdx !== -1) this.board[epIdx] = null;
 
     this.epTarget = move.special === 'doublePush'
@@ -121,7 +125,7 @@ class GameState {
   promotePiece(type) {
     if (!this.pendingPromotion) return;
     const { square, color } = this.pendingPromotion;
-    this.board[square] = { type, color };
+    this.board[square] = { type, color, promoted: true };
     this.pendingPromotion = null;
     const last = this.history[this.history.length - 1];
     if (last) last.notation += `=${PIECE_SYMBOLS[type]}`;
@@ -176,7 +180,7 @@ class GameState {
 
   _positionKey() {
     // Board, side to move, en passant square, and what each side's Ankh could still bring back
-    const board = this.board.map(p => p ? `${p.color[0]}${p.type}` : '.').join(',');
+    const board = this.board.map(p => p ? `${p.color[0]}${p.type}${p.promoted ? '*' : ''}` : '.').join(',');
     const ankh = [COLORS.WHITE, COLORS.BLACK]
       .map(c => this.ankhUsed[c] ? '-' : (this._getAnkhPiece(c)?.piece.type ?? ''))
       .join('|');

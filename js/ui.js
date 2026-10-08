@@ -146,7 +146,7 @@ function render() {
 const displayToIdx = (d) => flipped ? 63 - d : d;
 
 function squareLabel(i, piece, isLegal) {
-  let label = E.squareName(i);
+  let label = E.squareName(i) + (E.PYRAMID_SQUARES.has(i) ? ' (Pyramid)' : '');
   if (piece) label += `, ${cap(piece.color)} ${E.PIECE_NAMES[piece.type]}`;
   if (i === game.selectedIdx) label += ', selected';
   if (isLegal) label += piece ? ', capture' : ', legal move';

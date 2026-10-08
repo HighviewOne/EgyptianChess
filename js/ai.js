@@ -87,9 +87,12 @@ function apply(state, t) {
       board[capIdx] = null;
     }
     if (move.special === 'doublePush') ep = (from + move.to) / 2;
-    board[move.to] = t.promo ? { type: t.promo, color: turn } : piece;
+    board[move.to] = t.promo ? { type: t.promo, color: turn, promoted: true } : piece;
     board[from] = null;
-    if (victim) newLost = { ...lost, [victim.color]: [...lost[victim.color], victim.type] };
+    if (victim) {
+      const lostType = victim.promoted ? PIECES.SOLDIER : victim.type;
+      newLost = { ...lost, [victim.color]: [...lost[victim.color], lostType] };
+    }
   }
   return { board, turn: opp(turn), ep, ankhUsed, lost: newLost };
 }
@@ -110,7 +113,7 @@ function evaluate(state) {
       v += advance * advance * 3 + (col >= 2 && col <= 5 ? advance * 4 : 0);
     } else if (p.type !== PIECES.PHARAOH) {
       v += (CENTER[row] + CENTER[col]) * (p.type === PIECES.CHARIOT ? 2 : 5);
-      if (E.PYRAMID_SQUARES.has(i)) v += 8;
+      if (E.PYRAMID_SQUARES.has(i)) v += 15;   // blessed: extra king-step mobility
     } else {
       // Pharaoh prefers shelter on its own back rows
       const home = p.color === COLORS.WHITE ? row >= 6 : row <= 1;

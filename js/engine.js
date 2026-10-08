@@ -27,6 +27,8 @@ const PIECE_VALUES = { pharaoh: 0, vizier: 9, chariot: 5, priest: 3, sphinx: 4, 
 // d5, e5, d4, e4 (center pyramid zone)
 const PYRAMID_SQUARES = new Set([27, 28, 35, 36]);
 
+const KING_STEPS = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+
 const idxToRC = (i) => ({ row: Math.floor(i / 8), col: i % 8 });
 const rcToIdx = (r, c) => r * 8 + c;
 const onBoard = (r, c) => r >= 0 && r < 8 && c >= 0 && c < 8;
@@ -43,7 +45,7 @@ function getRawMoves(idx, board, epTarget) {
   const moves = [];
   switch (piece.type) {
     case PIECES.PHARAOH:
-      for (const [dr, dc] of [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]]) {
+      for (const [dr, dc] of KING_STEPS) {
         const r = row + dr, c = col + dc;
         if (onBoard(r, c) && board[rcToIdx(r,c)]?.color !== piece.color) {
           moves.push({ to: rcToIdx(r, c), special: null });
@@ -106,6 +108,17 @@ function getRawMoves(idx, board, epTarget) {
       break;
     }
   }
+  // Blessing of the Pyramid: a piece on a Pyramid square may also step one square any way
+  if (PYRAMID_SQUARES.has(idx)) {
+    for (const [dr, dc] of KING_STEPS) {
+      const r = row + dr, c = col + dc;
+      if (!onBoard(r, c)) continue;
+      const to = rcToIdx(r, c);
+      if (board[to]?.color !== piece.color && !moves.some(m => m.to === to)) {
+        moves.push({ to, special: null });
+      }
+    }
+  }
   return moves;
 }
 
@@ -155,6 +168,12 @@ function isSquareAttacked(square, byColor, board) {
   const { row, col } = idxToRC(square);
   const at = (r, c) => onBoard(r, c) ? board[rcToIdx(r, c)] : null;
   const isEnemy = (p, ...types) => p && p.color === byColor && types.includes(p.type);
+
+  // Any enemy piece blessed by an adjacent Pyramid square can step onto this one
+  for (const [dr, dc] of KING_STEPS) {
+    const r = row + dr, c = col + dc;
+    if (onBoard(r, c) && PYRAMID_SQUARES.has(rcToIdx(r, c)) && board[rcToIdx(r, c)]?.color === byColor) return true;
+  }
 
   for (const [dr, dc] of KNIGHT_STEPS) {
     if (isEnemy(at(row + dr, col + dc), PIECES.SPHINX)) return true;
