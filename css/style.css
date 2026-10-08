@@ -613,7 +613,8 @@ body::after {
   outline-offset: 2px;
 }
 .control-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-content: start; }
-.control-btns #share-btn { grid-column: span 2; }
+.control-btns #share-btn, .control-btns #install-btn { grid-column: span 2; }
+.control-btns [hidden] { display: none; }
 .share-url {
   width: 100%; max-width: 440px;
   box-sizing: border-box;
