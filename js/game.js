@@ -7,6 +7,7 @@ const {
 } = window.PharaohEngine;
 
 const opponent = (color) => color === COLORS.WHITE ? COLORS.BLACK : COLORS.WHITE;
+const PROMOTION_TYPES = [PIECES.VIZIER, PIECES.CHARIOT, PIECES.PRIEST, PIECES.SPHINX];
 const ankhRows = (color) => color === COLORS.WHITE ? [6, 7] : [0, 1];
 // A captured promoted piece is lost (and resurrected) as the Soldier it was born
 const lostAs = (piece) => piece.promoted
@@ -128,7 +129,10 @@ class GameState {
     this.board[square] = { type, color, promoted: true };
     this.pendingPromotion = null;
     const last = this.history[this.history.length - 1];
-    if (last) last.notation += `=${PIECE_SYMBOLS[type]}`;
+    if (last) {
+      last.promo = type;
+      last.notation += `=${PIECE_SYMBOLS[type]}`;
+    }
     this._finishTurn();
   }
 
@@ -294,5 +298,40 @@ class GameState {
 
   reset() {
     Object.assign(this, new GameState());
+  }
+
+  // ── Save / restore ────────────────────────────────────────────────────────
+  // A game is saved as its turn list and rebuilt by replaying it, which also
+  // restores undo, repetition counts, and Ankh state, and stays small.
+
+  moveList() {
+    return this.history.map(h => h.from === -1
+      ? { ankh: h.to }
+      : (h.promo ? { from: h.from, to: h.to, promo: h.promo } : { from: h.from, to: h.to }));
+  }
+
+  // Returns null if any turn is not legal, so a stale or corrupted save is ignored
+  static fromMoveList(list) {
+    if (!Array.isArray(list)) return null;
+    const g = new GameState();
+    for (const [i, t] of list.entries()) {
+      if (g.isOver() || g.pendingPromotion) return null;
+      if (t && Number.isInteger(t.ankh)) {
+        if (!g.activateAnkh() || g.clickSquare(t.ankh).action !== 'ankh_placed') return null;
+        continue;
+      }
+      if (!t || !Number.isInteger(t.from) || !Number.isInteger(t.to)) return null;
+      if (g.board[t.from]?.color !== g.currentTurn) return null;
+      g.clickSquare(t.from);
+      const r = g.clickSquare(t.to);
+      if (r.action === 'promotion') {
+        // The last turn may still be waiting for its promotion choice
+        if (PROMOTION_TYPES.includes(t.promo)) g.promotePiece(t.promo);
+        else if (t.promo || i !== list.length - 1) return null;
+      } else if (r.action !== 'move') {
+        return null;
+      }
+    }
+    return g;
   }
 }
