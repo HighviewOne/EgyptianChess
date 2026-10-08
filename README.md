@@ -17,6 +17,10 @@
 
 Egyptian Chess replaces standard chess pieces with their ancient Egyptian equivalents and introduces three new mechanics that fundamentally change how the game is played. No installation, no framework, no build step — open `index.html` and play.
 
+<p align="center">
+  <img src="docs/screenshot.png" alt="Pharaoh's Chess mid-game: a White Soldier on the Pyramid square e4 is selected, showing its blessed sideways and backward steps" width="820"/>
+</p>
+
 | Standard piece | Egyptian name | Special power |
 |---|---|---|
 | King | **Pharaoh** | — |
@@ -29,6 +33,10 @@ Egyptian Chess replaces standard chess pieces with their ancient Egyptian equiva
 ---
 
 ## Egyptian Rules
+
+<p align="center">
+  <img src="docs/demo.gif" alt="Captures raise sand dust, a blessed Soldier on the Pyramid shows its extra steps, and White resurrects a Sphinx with the Ankh" width="440"/>
+</p>
 
 ### Sphinx Movement
 The Sphinx combines a standard knight's L-jump with short diagonal slides: it can move to any of the 8 knight squares **or** slide 1–2 squares diagonally (blocked by intervening pieces). It cannot jump over pieces during diagonal slides.
@@ -103,7 +111,9 @@ EgyptianChess/
 ├── tests/
 │   └── rules.test.js   # node --test suite for engine + GameState
 └── docs/
-    └── banner.svg      # README banner
+    ├── banner.svg      # README banner
+    ├── screenshot.png  # README screenshot
+    └── demo.gif        # README gameplay clip
 ```
 
 ---
