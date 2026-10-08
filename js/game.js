@@ -310,6 +310,32 @@ class GameState {
       : (h.promo ? { from: h.from, to: h.to, promo: h.promo } : { from: h.from, to: h.to }));
   }
 
+  // Compact, readable form for share links: "e2e4.d7d5.a7a8v.-e2"
+  //   from+to squares, an optional promotion letter (v c p s), "-square" for an Ankh placement
+  toShareCode() {
+    const letter = { vizier: 'v', chariot: 'c', priest: 'p', sphinx: 's' };
+    return this.moveList().map(t => t.ankh !== undefined
+      ? '-' + squareName(t.ankh)
+      : squareName(t.from) + squareName(t.to) + (t.promo ? letter[t.promo] : '')).join('.');
+  }
+
+  static fromShareCode(code) {
+    if (typeof code !== 'string') return null;
+    if (code === '') return new GameState();
+    const promo = { v: 'vizier', c: 'chariot', p: 'priest', s: 'sphinx' };
+    const square = (s) => /^[a-h][1-8]$/.test(s) ? rcToIdx(8 - Number(s[1]), s.charCodeAt(0) - 97) : null;
+    const list = [];
+    for (const tok of code.split('.')) {
+      const ankh = /^-([a-h][1-8])$/.exec(tok);
+      const move = /^([a-h][1-8])([a-h][1-8])([vcps]?)$/.exec(tok);
+      if (ankh) list.push({ ankh: square(ankh[1]) });
+      else if (move) list.push(move[3] ? { from: square(move[1]), to: square(move[2]), promo: promo[move[3]] }
+                                       : { from: square(move[1]), to: square(move[2]) });
+      else return null;
+    }
+    return GameState.fromMoveList(list);
+  }
+
   // Returns null if any turn is not legal, so a stale or corrupted save is ignored
   static fromMoveList(list) {
     if (!Array.isArray(list)) return null;

@@ -9,6 +9,8 @@ let flipped  = false;   // Black at the bottom
 let focusIdx = E.rcToIdx(6, 4);   // board square that holds the keyboard tab stop (e2)
 let ankhHint = null;    // temporary status message after an invalid Ankh placement
 let cancelThink = null; // stops the computer's search in progress
+let notice = null;      // brief message (e.g. after opening a shared link)
+let noticeTimer = null;
 let reviewPly = null;   // while reviewing: how many moves into the game to show; null = live
 
 // The position on screen: a stored snapshot while reviewing, otherwise the live game.
@@ -165,6 +167,70 @@ function loadGame() {
     if (saved?.version === 1) return GameState.fromMoveList(saved.moves);
   } catch (_) {}
   return null;
+}
+
+// ── Share links ──────────────────────────────────────────────────────────────
+
+function flashNotice(msg) {
+  notice = msg;
+  updateStatus();
+  clearTimeout(noticeTimer);
+  noticeTimer = setTimeout(() => { notice = null; updateStatus(); }, 6000);
+}
+
+function shareUrl() {
+  return `${location.href.split('#')[0]}#g=${game.toShareCode()}`;
+}
+
+function openShareDialog() {
+  const input = document.getElementById('share-url');
+  input.value = shareUrl();
+  document.getElementById('share-copy').textContent = 'Copy Link';
+  document.getElementById('share-dialog').classList.remove('hidden');
+  input.focus();
+  input.select();
+}
+
+async function copyShareLink() {
+  const input = document.getElementById('share-url');
+  const btn = document.getElementById('share-copy');
+  let ok = false;
+  try { await navigator.clipboard.writeText(input.value); ok = true; } catch (_) {}
+  if (!ok) {
+    // Clipboard API needs https or localhost; fall back for pages opened from disk
+    input.select();
+    try { ok = document.execCommand('copy'); } catch (_) {}
+  }
+  btn.textContent = ok ? 'Copied ✓' : 'Select the link and copy it';
+}
+
+// Opens a game from a "#g=..." link. Returns true if the game on screen changed.
+function loadSharedGame() {
+  const m = /^#g=(.*)$/.exec(location.hash);
+  if (!m) return false;
+  // Clear the link so a refresh resumes the autosave instead of reloading this position
+  history.replaceState(null, '', location.href.split('#')[0]);
+  let code = '';
+  try { code = decodeURIComponent(m[1]); } catch (_) {}
+  const shared = GameState.fromShareCode(code);
+  if (!shared) { flashNotice('That game link isn’t valid — it may have been cut off'); return false; }
+
+  const mine = game ? game.toShareCode() : '';
+  const continues = mine === '' || shared.toShareCode().startsWith(mine);
+  if (!continues && !window.confirm('Open the shared game? It replaces the game in progress here.')) return false;
+
+  stopThinking();
+  hideDialogs();
+  reviewPly = null;
+  game = shared;
+  // A shared game is played person to person, viewed from the side to move
+  opponentMode = 'human';
+  store.set('pharaoh-opponent', opponentMode);
+  flipped = game.currentTurn === 'black';
+  flashNotice(game.isOver()
+    ? 'Shared game opened — it has finished'
+    : `Shared game opened — ${cap(game.currentTurn)} to move`);
+  return true;
 }
 
 // Board index shown at display position d (0 = top-left)
@@ -380,6 +446,7 @@ function triggerDraw() {
 }
 
 function hideDialogs() {
+  document.getElementById('share-dialog').classList.add('hidden');
   document.getElementById('promo-dialog').classList.add('hidden');
   document.getElementById('over-dialog').classList.add('hidden');
 }
@@ -389,6 +456,11 @@ function hideDialogs() {
 function updateStatus() {
   const el = document.getElementById('status-text');
 
+  if (notice) {
+    el.textContent = notice;
+    el.className = 'notice';
+    return;
+  }
   if (reviewPly !== null) {
     el.textContent = reviewPly === 0
       ? 'Reviewing the start — → to step forward, Esc to return'
@@ -565,6 +637,7 @@ const boardEl = document.getElementById('board');
 boardEl.addEventListener('click', e => {
   const sq = e.target.closest('.square');
   if (!sq) return;
+  notice = null;
   if (reviewPly !== null) { setReview(null); return; }   // clicking the board returns to the game
   if (isComputerTurn()) return;
   focusIdx = Number(sq.dataset.idx);
@@ -582,6 +655,16 @@ document.getElementById('over-undo-btn').addEventListener('click', undoMove);
 document.getElementById('promo-undo-btn').addEventListener('click', undoMove);
 document.getElementById('over-view-btn').addEventListener('click', hideDialogs);
 document.getElementById('flip-btn').addEventListener('click', () => { flipped = !flipped; render(); });
+document.getElementById('share-btn').addEventListener('click', openShareDialog);
+document.getElementById('share-copy').addEventListener('click', copyShareLink);
+document.getElementById('share-close').addEventListener('click', hideDialogs);
+window.addEventListener('hashchange', () => {
+  if (loadSharedGame()) {
+    render();
+    if (game.pendingPromotion) showPromoDialog();
+  }
+});
+
 document.getElementById('opponent-select').addEventListener('change', e => {
   stopThinking();
   opponentMode = e.target.value;
@@ -617,8 +700,7 @@ document.addEventListener('keydown', e => {
   // ← → Home End step through the moves (the board keeps its own arrow-key focus)
   const step = { ArrowLeft: -1, ArrowRight: 1 }[e.key];
   const inBoard = e.target.closest?.('#board') || e.target.tagName === 'SELECT';
-  const dialogOpen = !document.getElementById('promo-dialog').classList.contains('hidden')
-    || !document.getElementById('over-dialog').classList.contains('hidden');
+  const dialogOpen = !!document.querySelector('.dialog-overlay:not(.hidden)');
   if (!inBoard && !dialogOpen && !game.ankhMode && (step || e.key === 'Home' || e.key === 'End')) {
     e.preventDefault();
     if (e.key === 'Home') setReview(0);
@@ -627,6 +709,7 @@ document.addEventListener('keydown', e => {
     return;
   }
   if (e.key !== 'Escape') return;
+  if (!document.getElementById('share-dialog').classList.contains('hidden')) { hideDialogs(); return; }
   if (reviewPly !== null) { setReview(null); return; }
   if (game.ankhMode) { toggleAnkh(game.currentTurn); return; }
   if (!document.getElementById('over-dialog').classList.contains('hidden')) hideDialogs();
@@ -635,5 +718,6 @@ document.addEventListener('keydown', e => {
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 game = loadGame() || new GameState();
+loadSharedGame();
 render();
 if (game.pendingPromotion) showPromoDialog();

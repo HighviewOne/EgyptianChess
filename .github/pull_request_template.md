@@ -12,6 +12,8 @@
 
 ## Testing checklist
 
+<!-- `node --test` and `npm run test:e2e` (Chrome + Firefox) also run automatically on every PR -->
+
 - [ ] Opened `index.html` locally and played through several moves
 - [ ] Sphinx moves correctly (L-jump + 1–2 diagonal slides)
 - [ ] Ankh Resurrection places the correct piece and consumes the ability
