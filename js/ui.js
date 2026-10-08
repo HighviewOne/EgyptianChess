@@ -747,6 +747,30 @@ document.addEventListener('keydown', e => {
   if (!document.getElementById('over-dialog').classList.contains('hidden')) hideDialogs();
 });
 
+// ── Installable app ─────────────────────────────────────────────────────────
+
+// Offline support needs http(s); pages opened from disk skip it
+if ('serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+// Browsers that can install the app (Chrome, Edge, Android) offer it through this event
+let installPrompt = null;
+const installBtn = document.getElementById('install-btn');
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  installPrompt = e;
+  installBtn.hidden = false;
+});
+installBtn.addEventListener('click', async () => {
+  if (!installPrompt) return;
+  installPrompt.prompt();
+  await installPrompt.userChoice.catch(() => {});
+  installPrompt = null;
+  installBtn.hidden = true;
+});
+window.addEventListener('appinstalled', () => { installBtn.hidden = true; });
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 game = loadGame() || new GameState();

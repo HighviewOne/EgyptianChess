@@ -9,9 +9,11 @@ const test = base.test.extend({
     page.on('pageerror', e => errors.push(e.message));
     page.on('console', m => {
       // Web fonts come from Google; a network hiccup there is not a game error
-      if (m.type() === 'error' && !/fonts\.(googleapis|gstatic)\.com/.test(m.text())) errors.push(m.text());
+      const where = `${m.text()} ${m.location()?.url || ''}`;
+      if (m.type() === 'error' && !/fonts\.(googleapis|gstatic)\.com/.test(where)) errors.push(where);
     });
     await use(page);
+    if (errors.length) console.log('CONSOLE ERRORS:', errors);
     base.expect(errors, 'browser console errors').toEqual([]);
   },
 });

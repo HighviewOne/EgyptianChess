@@ -66,6 +66,7 @@ The four central squares — **d4, d5, e4, e5** — form the sacred Pyramid Zone
 - **WebAudio sounds** — procedural oscillator tones for select, move, capture, check, ankh, and victory; no audio files
 - **Move log** — long algebraic notation with unique Egyptian symbols (Ph Pharaoh, V Vizier, C Chariot, Pr Priest, S Sphinx; Soldiers unmarked), plus `+` check, `#` mate, `=V` promotion, `☥` resurrection
 - **Computer opponent** — Easy, Medium, or Hard; play either side. It understands the Ankh (and will resurrect to escape mate) and steers away from repetition draws when ahead. On the live site the search runs in a background thread so the page never stalls
+- **Installable & offline** — install it from the live site (⬇ Install App in Chrome/Edge/Android, or Share → Add to Home Screen on iPhone) and it plays with no connection, computer opponent included
 - **Play a friend by link** — 🔗 Share Game copies a link to the current position; your friend opens it, moves, and shares a link back. No server, no account; every move in a link is checked for legality
 - **Move review** — click any move in the Sacred Scroll (or use ⏮ ◀ ▶ ⏭, ← → Home End) to see the board as it was; Esc returns to the game
 - **Autosave** — the game in progress survives a refresh or closed tab (saved in your browser as its move list and replayed on load)
@@ -113,6 +114,9 @@ Both suites run on GitHub for every push and pull request.
 ```
 EgyptianChess/
 ├── index.html          # Shell, layout, dialogs
+├── manifest.webmanifest # Install metadata (name, icons, colours)
+├── sw.js               # Service worker: offline support (network first, cache fallback)
+├── icons/              # App icons (SVG source + PNG sizes, maskable)
 ├── css/
 │   └── style.css       # Design tokens, animations, responsive layout
 ├── js/
