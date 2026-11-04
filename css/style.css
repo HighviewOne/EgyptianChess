@@ -903,6 +903,44 @@ body::after {
 }
 .promo-piece { width: 54px; height: 54px; }
 
+/* ── Tutorial ── */
+.dialog-box.tutorial-box {
+  max-width: 520px; width: calc(100vw - 24px);
+  max-height: calc(100vh - 24px); overflow-y: auto;
+  padding: 22px 24px 20px;
+}
+.tutorial-step {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 2px;
+  color: var(--gold); text-transform: uppercase; margin-bottom: 4px;
+}
+.dialog-box .tutorial-glyph { font-size: 40px; margin-bottom: 4px; }
+.tutorial-text {
+  font-family: 'Cormorant Garamond', serif; font-size: 17px; line-height: 1.45;
+  color: var(--sand-pale); margin: 0 0 8px;
+}
+.tutorial-goal {
+  font-family: 'Cormorant Garamond', serif; font-size: 17px; font-weight: 500; line-height: 1.4;
+  color: var(--gold-bright); margin: 0 0 12px;
+}
+.tutorial-board { --sq: min(44px, calc((100vw - 80px) / 8)); width: max-content; margin: 0 auto 10px; }
+.tut-coord {
+  position: absolute; z-index: 3; pointer-events: none;
+  font-family: 'JetBrains Mono', monospace; font-size: 10px; line-height: 1; font-weight: 500;
+}
+.tut-coord.rank { top: 2px; left: 3px; }
+.tut-coord.file { bottom: 2px; right: 3px; }
+.square.light .tut-coord { color: rgba(60,36,12,0.75); }
+.square.dark  .tut-coord { color: rgba(240,214,138,0.8); }
+.tutorial-feedback {
+  min-height: 2.6em; margin: 0 0 6px;
+  font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 16px; color: var(--sand-pale);
+}
+.tutorial-feedback.good { color: var(--gold-bright); font-style: normal; font-weight: 500; }
+.tutorial-feedback.hint { color: #f0b090; }
+.tutorial-box .over-actions { flex-wrap: wrap; justify-content: center; }
+#tutorial-ankh[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--gold-bright), 0 0 18px rgba(245,213,116,0.5); }
+.rules-learn { margin-bottom: 10px; }
+
 /* ── Responsive ── */
 @media (max-width: 1060px) {
   .game-layout { grid-template-columns: 1fr; }
@@ -912,6 +950,8 @@ body::after {
 @media (max-width: 600px) {
   /* Fit the board, labels, and frame inside a phone screen */
   .board { --sq: min(42px, calc((100vw - 92px) / 8)); }
+  .tutorial-board { --sq: min(36px, calc((100vw - 80px) / 8)); }
+  .dialog-box.tutorial-box { padding: 16px 12px 14px; }
   .board-frame { padding: 10px; }
   .board-frame .frame-glyphs { display: none; }
   .header h1 { letter-spacing: 6px; font-size: 26px; }

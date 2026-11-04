@@ -119,6 +119,7 @@
       <div class="controls-row">
         <div class="control-btns">
           <button class="btn" id="new-game-btn">⟳ New Game</button>
+          <button class="btn" id="learn-btn" title="Three short lessons on the Sphinx, the Ankh and the Pyramid">📜 Learn the Rules</button>
           <button class="btn" id="undo-btn" title="Take back the last move (Ctrl+Z)" disabled>↶ Take Back</button>
           <button class="btn" id="flip-btn" title="Turn the board around">⇅ Flip Board</button>
           <button class="btn" id="mute-btn" aria-pressed="false">🔊 Sound On</button>
@@ -159,6 +160,7 @@
   <details class="rules-box">
     <summary>Rules of Egypt</summary>
     <div class="rules-content">
+      <div class="rules-learn"><button type="button" class="btn" id="rules-learn-btn">📜 Try the three Egyptian rules in a short tutorial</button></div>
       <div><b>Pharaoh</b> (King) — One square any direction.</div>
       <div><b>Vizier</b> (Queen) — Any distance, any direction.</div>
       <div><b>Chariot</b> (Rook) — Any distance, ranks &amp; files.</div>
@@ -183,6 +185,25 @@
     <div class="promo-btns" id="promo-pieces"></div>
     <div class="over-actions">
       <button class="btn" id="promo-undo-btn">↶ Take Back</button>
+    </div>
+  </div>
+</div>
+
+<!-- Tutorial dialog -->
+<div class="dialog-overlay hidden" id="tutorial-dialog" role="dialog" aria-modal="true" aria-labelledby="tutorial-title">
+  <div class="dialog-box tutorial-box">
+    <div class="tutorial-step" id="tutorial-step">Lesson 1 of 3</div>
+    <div class="crest-large tutorial-glyph" id="tutorial-glyph" aria-hidden="true">𓃬</div>
+    <h3 id="tutorial-title">The Sphinx</h3>
+    <p class="tutorial-text" id="tutorial-text"></p>
+    <p class="tutorial-goal" id="tutorial-goal"></p>
+    <div id="tutorial-board" class="board tutorial-board" role="group" aria-label="Lesson board: arrow keys to move between squares, Enter to select"></div>
+    <p class="tutorial-feedback" id="tutorial-feedback" role="status" aria-live="polite"></p>
+    <div class="over-actions">
+      <button class="btn ankh-btn" id="tutorial-ankh" aria-pressed="false" hidden>Use the Ankh</button>
+      <button class="btn" id="tutorial-restart">↺ Start lesson again</button>
+      <button class="btn" id="tutorial-next" hidden>Next lesson ⟶</button>
+      <button class="btn" id="tutorial-close">Close</button>
     </div>
   </div>
 </div>
@@ -220,5 +241,6 @@
 <script src="js/game.js"></script>
 <script src="js/ai.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/tutorial.js"></script>
 </body>
 </html>
