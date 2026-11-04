@@ -59,6 +59,7 @@ The four central squares — **d4, d5, e4, e5** — form the sacred Pyramid Zone
 
 ## Features
 
+- **Learn the Rules** — 📜 a short guided tutorial: three hands-on lessons on the Sphinx, the Ankh and the Pyramid, on their own board, so a game in progress is never touched. Open it from the controls or the Rules box
 - **Custom SVG pieces** — hand-crafted Egyptian silhouettes, styled via CSS `currentColor`
 - **Hi-fi visual design** — carved sandstone board, hieroglyph frieze, ambient wall texture, vignette
 - **Piece motion** — pieces glide to their squares (yours and the computer's); resurrected pieces grow out of the ground; instant when your system asks for reduced motion
@@ -131,9 +132,11 @@ EgyptianChess/
 │   ├── game.js         # GameState class — move execution, Ankh logic, draws, undo
 │   ├── ai.js           # Computer opponent — alpha-beta search (window.PharaohAI)
 │   ├── ai-worker.js    # Runs the search off the main thread when served over http(s)
-│   └── ui.js           # Rendering, WebAudio, particle FX, event handling
+│   ├── ui.js           # Rendering, WebAudio, particle FX, event handling
+│   └── tutorial.js     # Learn the Rules: three lessons (window.PharaohTutorial)
 ├── tests/
 │   ├── rules.test.js   # node --test suite for engine, GameState, and the computer
+│   ├── tutorial.test.js # node --test: each lesson's position and solution, via the engine
 │   └── e2e/            # Playwright browser tests (Chrome + Firefox) + tiny static server
 ├── package.json        # Dev-only: Playwright for the browser tests (the game needs nothing)
 ├── playwright.config.js

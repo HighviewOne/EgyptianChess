@@ -3,7 +3,7 @@
 const CACHE = 'pharaoh-chess';
 const APP_FILES = [
   './', 'index.html', 'manifest.webmanifest', 'css/style.css',
-  'js/engine.js', 'js/pieces-svg.js', 'js/game.js', 'js/ai.js', 'js/ai-worker.js', 'js/ui.js',
+  'js/engine.js', 'js/pieces-svg.js', 'js/game.js', 'js/ai.js', 'js/ai-worker.js', 'js/ui.js', 'js/tutorial.js',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png',
   'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png'
 ];
