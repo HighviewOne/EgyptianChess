@@ -295,6 +295,19 @@ test('contempt: the computer takes a repetition draw only when it is worse by mo
   assert.ok(!AI.LEVELS.hard.contempt);                // Hard is deliberately unchanged
 });
 
+test('computer saves its Ankh for something worth bringing back', () => {
+  const quiet = () => emptyGame([
+    ['e1', 'pharaoh', 'white'], ['a2', 'soldier', 'white'], ['b2', 'soldier', 'white'], ['h2', 'soldier', 'white'],
+    ['e8', 'pharaoh', 'black'], ['a7', 'soldier', 'black'], ['b7', 'soldier', 'black'], ['h7', 'soldier', 'black'],
+  ]);
+  const lostSoldier = quiet();
+  lostSoldier.capturedBy.black.push({ type: 'soldier', color: 'white' });
+  assert.notStrictEqual(AI.bestTurn(lostSoldier, 2).kind, 'ankh');   // a Soldier isn't worth the Ankh
+  const lostVizier = quiet();
+  lostVizier.capturedBy.black.push({ type: 'vizier', color: 'white' });
+  assert.strictEqual(AI.bestTurn(lostVizier, 2).kind, 'ankh');       // a Vizier is
+});
+
 test('computer search state applies turns like the real game', () => {
   const g = new GameState();
   play(g, 'e2-e4', 'a7-a6', 'e4-e5', 'd7-d5');

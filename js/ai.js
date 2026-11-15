@@ -6,6 +6,7 @@ const { PIECES, COLORS } = E;
 
 const VALUE = { pharaoh: 0, vizier: 900, chariot: 500, sphinx: 430, priest: 320, soldier: 100 };
 const MATE = 100000;
+const ANKH_RESERVE = 330;   // see evaluate(); measured against 0.4 × piece: 22 W, 2 L, 16 D in 40 games
 const opp = (c) => c === COLORS.WHITE ? COLORS.BLACK : COLORS.WHITE;
 const homeRows = (c) => c === COLORS.WHITE ? [6, 7] : [0, 1];
 
@@ -121,10 +122,16 @@ function evaluate(state) {
     }
     score += p.color === state.turn ? v : -v;
   }
-  // An unspent Ankh with something to bring back is worth part of that piece
+  // An unspent Ankh is insurance, worth about a minor piece whether or not anything has been
+  // lost yet (so losing a piece never "unlocks" it), or 40% of a big piece waiting to come back.
+  // It brings back only the most recently lost piece, so a value tied to that piece collapses
+  // with the next trade and the search would always cash it in at once. With a steady value it
+  // brings back a Sphinx or better straight away, but keeps it rather than spend a turn on a
+  // Soldier or Priest, and still uses it to escape mate.
   for (const color of [COLORS.WHITE, COLORS.BLACK]) {
+    if (state.ankhUsed[color]) continue;
     const ap = ankhPiece(state, color);
-    if (ap) score += (color === state.turn ? 1 : -1) * VALUE[ap.type] * 0.4;
+    score += (color === state.turn ? 1 : -1) * Math.max(ANKH_RESERVE, ap ? VALUE[ap.type] * 0.4 : 0);
   }
   return score;
 }
