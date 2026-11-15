@@ -179,8 +179,9 @@ const TT_LIMIT = 400000;
 const toTT   = (s, ply) => s > MATE - 1000 ? s + ply : s < -MATE + 1000 ? s - ply : s;
 const fromTT = (s, ply) => s > MATE - 1000 ? s - ply : s < -MATE + 1000 ? s + ply : s;
 
-// memory = { tt: Map, killers: [], history: Map } shared across depths of one search, or null
-function makeSearcher(deadline, memory = null) {
+// memory = { tt: Map, killers: [], history: Map } shared across depths of one search, or null.
+// contempt: how much worse than level the searching side scores a draw (0 = a draw is level)
+function makeSearcher(deadline, memory = null, contempt = 0) {
   let nodes = 0;
   const tick = () => {
     if ((++nodes & 511) === 0 && Date.now() > deadline) throw new Timeout();
@@ -238,7 +239,8 @@ function makeSearcher(deadline, memory = null) {
     }
 
     let turns = generate(state);
-    if (turns.length === 0) return E.isInCheck(state.turn, state.board) ? -MATE + ply : 0;
+    // Stalemate: a draw, which the searching side (to move at even plies) counts as a loss of `contempt`
+    if (turns.length === 0) return E.isInCheck(state.turn, state.board) ? -MATE + ply : ply % 2 ? contempt : -contempt;
     if (memory) turns = orderTurns(turns, ttMove, ply);
 
     let best = -Infinity, bestTurn = null;
@@ -273,7 +275,7 @@ function makeSearcher(deadline, memory = null) {
     let alpha = -Infinity;
     const scored = [];
     for (const t of turns) {
-      const score = drawTurns.has(t) ? 0 : -negamax(apply(state, t), depth - 1, -Infinity, exact ? Infinity : -alpha, 1, useQuiesce);
+      const score = drawTurns.has(t) ? -contempt : -negamax(apply(state, t), depth - 1, -Infinity, exact ? Infinity : -alpha, 1, useQuiesce);
       scored.push({ t, score });
       if (score > alpha) alpha = score;
     }
@@ -288,8 +290,10 @@ const LEVELS = {
   medium: { maxDepth: 2, timeMs: 800,  quiesce: true,  noise: 15 },
   hard:   { maxDepth: 6, timeMs: 1600, quiesce: true,  noise: 0 },
   // Remembers positions it has analysed and orders moves by what refuted before,
-  // so it reaches deeper in the time; and it is given more time
-  expert: { maxDepth: 12, timeMs: 4000, quiesce: true, noise: 0, memory: true }
+  // so it reaches deeper in the time; and it is given more time. Contempt: it counts a draw
+  // as a quarter of a Soldier worse than level, so it plays on in even positions instead of
+  // repeating moves (it still takes a draw when it is clearly worse)
+  expert: { maxDepth: 12, timeMs: 4000, quiesce: true, noise: 0, memory: true, contempt: 25 }
 };
 // On the page's own thread (pages opened from disk) a long think would freeze it
 const MAIN_THREAD_MS = 1600;
@@ -315,7 +319,7 @@ function repetitionDraws(game, state, turns) {
 
 // Synchronous search, used by think() one depth at a time and directly by tests
 function searchDepth(state, depth, opts, deadline, rootTurns, drawTurns, memory = null) {
-  return makeSearcher(deadline, memory).root(state, rootTurns, depth, opts.quiesce, opts.noise > 0, drawTurns);
+  return makeSearcher(deadline, memory, opts.contempt || 0).root(state, rootTurns, depth, opts.quiesce, opts.noise > 0, drawTurns);
 }
 
 function pick(scored, noise, rand = Math.random) {
