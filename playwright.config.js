@@ -25,8 +25,9 @@ module.exports = defineConfig({
     // and with a dozen looping animations on screen it manages about one frame a second, so
     // clicks time out waiting for the page to settle. Chrome and Firefox cover the animations.
     ...(process.env.CI || process.env.WEBKIT ? [
-      { name: 'webkit', use: { ...devices['Desktop Safari'], viewport: { width: 1280, height: 1100 }, reducedMotion: 'reduce' } },
-      { name: 'iphone', use: { ...devices['iPhone 13'], reducedMotion: 'reduce' } },
+      // Even then each click takes 3-5 s there, so the longest test (about 22 clicks) needs more than 60 s
+      { name: 'webkit', timeout: 150_000, use: { ...devices['Desktop Safari'], viewport: { width: 1280, height: 1100 }, reducedMotion: 'reduce' } },
+      { name: 'iphone', timeout: 150_000, use: { ...devices['iPhone 13'], reducedMotion: 'reduce' } },
     ] : []),
   ],
   webServer: {
