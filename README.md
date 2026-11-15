@@ -45,7 +45,7 @@ The Sphinx combines a standard knight's L-jump with short diagonal slides: it ca
 Once per game, on your turn, you may spend your move to resurrect the most recently captured piece of your own that is not your Pharaoh, placing it on any empty square on your home two ranks (rows 7–8 for White, rows 1–2 for Black). The placement is illegal if it leaves your Pharaoh in check.
 
 ### Blessing of the Pyramid
-The four central squares — **d4, d5, e4, e5** — form the sacred Pyramid Zone. A piece standing on one may, in addition to its normal moves, move or capture **one square in any direction**, like the Pharaoh. A blessed Priest can step sideways, a blessed Chariot diagonally, and a blessed Soldier even backward. Their golden glow intensifies when occupied, making them the focal point of the middle game.
+The four central squares — **d4, d5, e4, e5** — form the sacred Pyramid Zone. A piece standing on one may, in addition to its normal moves, move or capture **one square in any direction**, like the Pharaoh. A blessed Priest can step sideways, a blessed Chariot diagonally, and a blessed Soldier even backward. On the board they sit inside a gold frame with a small pyramid at the centre, and a square glows brighter while a piece stands on it.
 
 ### Other rule changes
 - **No castling** — the Chariot stands alone
@@ -66,7 +66,7 @@ The four central squares — **d4, d5, e4, e5** — form the sacred Pyramid Zone
 - **Particle effects** — 12-particle sand-dust burst as a capturing piece lands; cinematic 10-ray ankh burst on resurrection
 - **WebAudio sounds** — procedural oscillator tones for select, move, capture, check, ankh, and victory; no audio files
 - **Move log** — long algebraic notation with unique Egyptian symbols (Ph Pharaoh, V Vizier, C Chariot, Pr Priest, S Sphinx; Soldiers unmarked), plus `+` check, `#` mate, `=V` promotion, `☥` resurrection
-- **Computer opponent** — Easy, Medium, Hard, or Expert; play either side. Expert remembers positions it has already analysed and tries the moves that refuted others first, so it looks a move deeper, and thinks up to 4 seconds. It understands the Ankh (and will resurrect to escape mate) and steers away from repetition draws when ahead. On the live site the search runs in a background thread so the page never stalls
+- **Computer opponent** — Easy, Medium, Hard, or Expert; play either side. Expert remembers positions it has already analysed and tries the moves that refuted others first, so it looks a move deeper, and thinks up to 4 seconds. It also plays on in level positions instead of settling for a repetition draw. Every level understands the Ankh: it brings back a lost Sphinx or better at once, usually saves it rather than spend a turn on a Soldier or Priest, and resurrects to escape mate. It steers away from repetition draws when ahead. On the live site the search runs in a background thread so the page never stalls
 - **Installable & offline** — install it from the live site (⬇ Install App in Chrome/Edge/Android, or Share → Add to Home Screen on iPhone) and it plays with no connection, computer opponent included
 - **Play a friend by link** — 🔗 Share Game copies a link to the current position; your friend opens it, moves, and shares a link back. No server, no account; every move in a link is checked for legality
 - **Move review** — click any move in the Sacred Scroll (or use ⏮ ◀ ▶ ⏭, ← → Home End) to see the board as it was; Esc returns to the game

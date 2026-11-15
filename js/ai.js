@@ -6,6 +6,7 @@ const { PIECES, COLORS } = E;
 
 const VALUE = { pharaoh: 0, vizier: 900, chariot: 500, sphinx: 430, priest: 320, soldier: 100 };
 const MATE = 100000;
+const ANKH_RESERVE = 330;   // see evaluate(); measured against 0.4 × piece: 22 W, 2 L, 16 D in 40 games
 const opp = (c) => c === COLORS.WHITE ? COLORS.BLACK : COLORS.WHITE;
 const homeRows = (c) => c === COLORS.WHITE ? [6, 7] : [0, 1];
 
@@ -121,10 +122,16 @@ function evaluate(state) {
     }
     score += p.color === state.turn ? v : -v;
   }
-  // An unspent Ankh with something to bring back is worth part of that piece
+  // An unspent Ankh is insurance, worth about a minor piece whether or not anything has been
+  // lost yet (so losing a piece never "unlocks" it), or 40% of a big piece waiting to come back.
+  // It brings back only the most recently lost piece, so a value tied to that piece collapses
+  // with the next trade and the search would always cash it in at once. With a steady value it
+  // brings back a Sphinx or better straight away, but keeps it rather than spend a turn on a
+  // Soldier or Priest, and still uses it to escape mate.
   for (const color of [COLORS.WHITE, COLORS.BLACK]) {
+    if (state.ankhUsed[color]) continue;
     const ap = ankhPiece(state, color);
-    if (ap) score += (color === state.turn ? 1 : -1) * VALUE[ap.type] * 0.4;
+    score += (color === state.turn ? 1 : -1) * Math.max(ANKH_RESERVE, ap ? VALUE[ap.type] * 0.4 : 0);
   }
   return score;
 }
@@ -179,8 +186,9 @@ const TT_LIMIT = 400000;
 const toTT   = (s, ply) => s > MATE - 1000 ? s + ply : s < -MATE + 1000 ? s - ply : s;
 const fromTT = (s, ply) => s > MATE - 1000 ? s - ply : s < -MATE + 1000 ? s + ply : s;
 
-// memory = { tt: Map, killers: [], history: Map } shared across depths of one search, or null
-function makeSearcher(deadline, memory = null) {
+// memory = { tt: Map, killers: [], history: Map } shared across depths of one search, or null.
+// contempt: how much worse than level the searching side scores a draw (0 = a draw is level)
+function makeSearcher(deadline, memory = null, contempt = 0) {
   let nodes = 0;
   const tick = () => {
     if ((++nodes & 511) === 0 && Date.now() > deadline) throw new Timeout();
@@ -238,7 +246,8 @@ function makeSearcher(deadline, memory = null) {
     }
 
     let turns = generate(state);
-    if (turns.length === 0) return E.isInCheck(state.turn, state.board) ? -MATE + ply : 0;
+    // Stalemate: a draw, which the searching side (to move at even plies) counts as a loss of `contempt`
+    if (turns.length === 0) return E.isInCheck(state.turn, state.board) ? -MATE + ply : ply % 2 ? contempt : -contempt;
     if (memory) turns = orderTurns(turns, ttMove, ply);
 
     let best = -Infinity, bestTurn = null;
@@ -273,7 +282,7 @@ function makeSearcher(deadline, memory = null) {
     let alpha = -Infinity;
     const scored = [];
     for (const t of turns) {
-      const score = drawTurns.has(t) ? 0 : -negamax(apply(state, t), depth - 1, -Infinity, exact ? Infinity : -alpha, 1, useQuiesce);
+      const score = drawTurns.has(t) ? -contempt : -negamax(apply(state, t), depth - 1, -Infinity, exact ? Infinity : -alpha, 1, useQuiesce);
       scored.push({ t, score });
       if (score > alpha) alpha = score;
     }
@@ -288,8 +297,10 @@ const LEVELS = {
   medium: { maxDepth: 2, timeMs: 800,  quiesce: true,  noise: 15 },
   hard:   { maxDepth: 6, timeMs: 1600, quiesce: true,  noise: 0 },
   // Remembers positions it has analysed and orders moves by what refuted before,
-  // so it reaches deeper in the time; and it is given more time
-  expert: { maxDepth: 12, timeMs: 4000, quiesce: true, noise: 0, memory: true }
+  // so it reaches deeper in the time; and it is given more time. Contempt: it counts a draw
+  // as a quarter of a Soldier worse than level, so it plays on in even positions instead of
+  // repeating moves (it still takes a draw when it is clearly worse)
+  expert: { maxDepth: 12, timeMs: 4000, quiesce: true, noise: 0, memory: true, contempt: 25 }
 };
 // On the page's own thread (pages opened from disk) a long think would freeze it
 const MAIN_THREAD_MS = 1600;
@@ -315,7 +326,7 @@ function repetitionDraws(game, state, turns) {
 
 // Synchronous search, used by think() one depth at a time and directly by tests
 function searchDepth(state, depth, opts, deadline, rootTurns, drawTurns, memory = null) {
-  return makeSearcher(deadline, memory).root(state, rootTurns, depth, opts.quiesce, opts.noise > 0, drawTurns);
+  return makeSearcher(deadline, memory, opts.contempt || 0).root(state, rootTurns, depth, opts.quiesce, opts.noise > 0, drawTurns);
 }
 
 function pick(scored, noise, rand = Math.random) {

@@ -271,6 +271,43 @@ test('computer resurrects with the Ankh when it is the only escape', () => {
   assert.ok(['b1', 'c1', 'd1', 'e1', 'f1', 'g1'].includes(E.squareName(t.to)));
 });
 
+test('contempt: the computer takes a repetition draw only when it is worse by more than its contempt', () => {
+  // Locked Soldiers, White a Soldier up; Black can repeat the position for the third time with h8-g8
+  const g = emptyGame([
+    ['g1', 'pharaoh', 'white'], ['a4', 'soldier', 'white'], ['b3', 'soldier', 'white'], ['h2', 'soldier', 'white'],
+    ['g8', 'pharaoh', 'black'], ['a5', 'soldier', 'black'], ['b4', 'soldier', 'black'],
+  ]);
+  g.positionCounts = {};
+  g._recordPosition();
+  play(g, 'g1-h1', 'g8-h8', 'h1-g1', 'h8-g8', 'g1-h1', 'g8-h8', 'h1-g1');
+  const drawKey = sq('h8') * 64 + sq('g8');
+  // Best score Black has without the draw (analyse doesn't know about repetition)
+  const best = Math.max(...AI.analyse(g, 2).filter(s => s.key !== drawKey).map(s => s.score));
+  assert.ok(best < -10, `Black should be worse here, got ${best}`);
+  const choice = (contempt) => {
+    const t = AI.bestTurn(g, 2, { quiesce: true, contempt });
+    return E.squareName(t.from) + E.squareName(t.move.to);
+  };
+  assert.strictEqual(choice(0), 'h8g8');              // a draw beats being worse
+  assert.strictEqual(choice(-best - 5), 'h8g8');      // still worse than the draw with contempt
+  assert.notStrictEqual(choice(-best + 5), 'h8g8');   // now it would rather play on
+  assert.ok(AI.LEVELS.expert.contempt > 0);
+  assert.ok(!AI.LEVELS.hard.contempt);                // Hard is deliberately unchanged
+});
+
+test('computer saves its Ankh for something worth bringing back', () => {
+  const quiet = () => emptyGame([
+    ['e1', 'pharaoh', 'white'], ['a2', 'soldier', 'white'], ['b2', 'soldier', 'white'], ['h2', 'soldier', 'white'],
+    ['e8', 'pharaoh', 'black'], ['a7', 'soldier', 'black'], ['b7', 'soldier', 'black'], ['h7', 'soldier', 'black'],
+  ]);
+  const lostSoldier = quiet();
+  lostSoldier.capturedBy.black.push({ type: 'soldier', color: 'white' });
+  assert.notStrictEqual(AI.bestTurn(lostSoldier, 2).kind, 'ankh');   // a Soldier isn't worth the Ankh
+  const lostVizier = quiet();
+  lostVizier.capturedBy.black.push({ type: 'vizier', color: 'white' });
+  assert.strictEqual(AI.bestTurn(lostVizier, 2).kind, 'ankh');       // a Vizier is
+});
+
 test('computer search state applies turns like the real game', () => {
   const g = new GameState();
   play(g, 'e2-e4', 'a7-a6', 'e4-e5', 'd7-d5');

@@ -434,6 +434,21 @@ body::after {
   background: radial-gradient(circle, rgba(245,213,116,0.55) 0%, rgba(74,122,220,0.2) 50%, transparent 75%);
   animation: pyramid-occupied 1.6s ease-in-out infinite;
 }
+/* One gold frame round the whole zone, with a small pyramid where its four squares meet.
+   d4–e5 is the exact centre, so the same box is right with the board flipped. */
+.board::after {
+  content: '';
+  position: absolute;
+  left: calc(var(--sq) * 3); top: calc(var(--sq) * 3);
+  width: calc(var(--sq) * 2); height: calc(var(--sq) * 2);
+  box-sizing: border-box;
+  border: 2px solid var(--gold-bright);
+  box-shadow: 0 0 10px rgba(245,213,116,0.5), inset 0 0 12px rgba(245,213,116,0.3);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 18'%3E%3Cpath d='M10 1 19 17H1Z' fill='%23f5d574' stroke='%235a3a1a' stroke-width='1.2' stroke-linejoin='round'/%3E%3Cpath d='M10 1 13 17H10Z' fill='%23c8962e'/%3E%3C/svg%3E")
+    center / calc(var(--sq) * 0.26) no-repeat;
+  pointer-events: none;
+  z-index: 1;
+}
 @keyframes pyramid-pulse {
   0%, 100% { opacity: 0.5; }
   50%       { opacity: 1; }
@@ -947,6 +962,31 @@ body::after {
    column (WebKit's iPhone test caught taps landing on "Promoted pieces" instead) */
 .rules-learn .btn { white-space: normal; max-width: 100%; line-height: 1.5; }
 @media (max-width: 600px) { .rules-content { columns: 1; } }
+
+/* Desktop: the Sacred Scroll fills the space under White's panel, beside the board, so the
+   move list is in view while playing; the buttons take the full width under the board */
+@media (min-width: 1061px) {
+  .game-layout {
+    grid-template-areas:
+      "black frame    white"
+      ".     frame    log"
+      ".     status   ."
+      ".     options  ."
+      ".     controls .";
+    grid-template-rows: auto 1fr;
+    gap: 12px 18px;
+  }
+  .board-stage, .controls-row { display: contents; }
+  #black-panel { grid-area: black; }
+  #white-panel { grid-area: white; }
+  .board-frame { grid-area: frame; justify-self: center; }
+  .status-bar { grid-area: status; box-sizing: border-box; }
+  .game-options { grid-area: options; }
+  .control-btns { grid-area: controls; grid-template-columns: repeat(3, 1fr); }
+  .control-btns #install-btn { grid-column: span 3; }
+  /* contain: size so a long game scrolls inside the box instead of stretching the row */
+  .log-box { grid-area: log; align-self: stretch; max-height: none; contain: size; }
+}
 
 /* ── Responsive ── */
 @media (max-width: 1060px) {
