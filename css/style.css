@@ -942,7 +942,11 @@ body::after {
 .tutorial-feedback.hint { color: #f0b090; }
 .tutorial-box .over-actions { flex-wrap: wrap; justify-content: center; }
 #tutorial-ankh[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--gold-bright), 0 0 18px rgba(245,213,116,0.5); }
-.rules-learn { margin-bottom: 10px; }
+.rules-learn { margin-bottom: 10px; column-span: all; }
+/* The button spans both rule columns and wraps, so on a phone it can't run under the second
+   column (WebKit's iPhone test caught taps landing on "Promoted pieces" instead) */
+.rules-learn .btn { white-space: normal; max-width: 100%; line-height: 1.5; }
+@media (max-width: 600px) { .rules-content { columns: 1; } }
 
 /* ── Responsive ── */
 @media (max-width: 1060px) {

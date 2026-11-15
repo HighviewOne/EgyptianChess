@@ -104,11 +104,11 @@ python3 -m http.server 8000   # then open http://localhost:8000
 node --test
 ```
 
-**Browser tests** play the real page in Chrome and Firefox with [Playwright](https://playwright.dev) — every button, dialog, the computer opponent, autosave, review, and share links. They're a development-only dependency; the game itself still has none:
+**Browser tests** play the real page in Chrome, Firefox and Safari's engine (WebKit, desktop and iPhone) with [Playwright](https://playwright.dev) — every button, dialog, the computer opponent, autosave, review, and share links. They're a development-only dependency; the game itself still has none:
 
 ```bash
 npm install
-npx playwright install chromium firefox   # first time only
+npx playwright install chromium firefox   # first time only (add webkit and set WEBKIT=1 for Safari/iPhone; CI always runs them)
 npm run test:e2e
 ```
 
@@ -137,7 +137,7 @@ EgyptianChess/
 ├── tests/
 │   ├── rules.test.js   # node --test suite for engine, GameState, and the computer
 │   ├── tutorial.test.js # node --test: each lesson's position and solution, via the engine
-│   └── e2e/            # Playwright browser tests (Chrome + Firefox) + tiny static server
+│   └── e2e/            # Playwright browser tests (Chrome, Firefox, Safari/iPhone in CI) + tiny static server
 ├── package.json        # Dev-only: Playwright for the browser tests (the game needs nothing)
 ├── playwright.config.js
 ├── .github/            # CI workflow (rules + browser tests), issue and PR templates

@@ -1,5 +1,8 @@
 const { test, expect, idx, square, play } = require('./fixtures');
 
+// WebKit runs with reduced motion in CI (see playwright.config.js), which turns these off
+test.skip(({ browserName }) => browserName === 'webkit', 'WebKit runs with reduced motion; Chrome and Firefox cover animations');
+
 // Clicks from/to inside the page so the animation can be inspected before it ends
 const moveAndInspect = (page, from, to) => page.evaluate(([f, t]) => {
   const click = i => document.querySelector(`#board .square[data-idx="${i}"]`).click();

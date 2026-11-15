@@ -8,9 +8,12 @@ const test = base.test.extend({
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
     page.on('console', m => {
-      // Web fonts come from Google; a network hiccup there is not a game error
+      // Web fonts come from Google; a network hiccup there is not a game error. WebKit also
+      // refuses the manifest of a page opened from disk (file://), which is harmless.
       const where = `${m.text()} ${m.location()?.url || ''}`;
-      if (m.type() === 'error' && !/fonts\.(googleapis|gstatic)\.com/.test(where)) errors.push(where);
+      const harmless = /fonts\.(googleapis|gstatic)\.com/.test(where)
+        || (page.url().startsWith('file:') && /Origin null is not allowed/.test(where));
+      if (m.type() === 'error' && !harmless) errors.push(where);
     });
     await use(page);
     if (errors.length) console.log('CONSOLE ERRORS:', errors);
