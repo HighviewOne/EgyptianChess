@@ -45,7 +45,7 @@ The Sphinx combines a standard knight's L-jump with short diagonal slides: it ca
 Once per game, on your turn, you may spend your move to resurrect the most recently captured piece of your own that is not your Pharaoh, placing it on any empty square on your home two ranks (rows 7–8 for White, rows 1–2 for Black). The placement is illegal if it leaves your Pharaoh in check.
 
 ### Blessing of the Pyramid
-The four central squares — **d4, d5, e4, e5** — form the sacred Pyramid Zone. A piece standing on one may, in addition to its normal moves, move or capture **one square in any direction**, like the Pharaoh. A blessed Priest can step sideways, a blessed Chariot diagonally, and a blessed Soldier even backward. Their golden glow intensifies when occupied, making them the focal point of the middle game.
+The four central squares — **d4, d5, e4, e5** — form the sacred Pyramid Zone. A piece standing on one may, in addition to its normal moves, move or capture **one square in any direction**, like the Pharaoh. A blessed Priest can step sideways, a blessed Chariot diagonally, and a blessed Soldier even backward. On the board they sit inside a gold frame with a small pyramid at the centre, and a square glows brighter while a piece stands on it.
 
 ### Other rule changes
 - **No castling** — the Chariot stands alone
