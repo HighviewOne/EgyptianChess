@@ -959,6 +959,31 @@ body::after {
 #tutorial-ankh[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--gold-bright), 0 0 18px rgba(245,213,116,0.5); }
 .rules-learn { margin-bottom: 10px; }
 
+/* Desktop: the Sacred Scroll fills the space under White's panel, beside the board, so the
+   move list is in view while playing; the buttons take the full width under the board */
+@media (min-width: 1061px) {
+  .game-layout {
+    grid-template-areas:
+      "black frame    white"
+      ".     frame    log"
+      ".     status   ."
+      ".     options  ."
+      ".     controls .";
+    grid-template-rows: auto 1fr;
+    gap: 12px 18px;
+  }
+  .board-stage, .controls-row { display: contents; }
+  #black-panel { grid-area: black; }
+  #white-panel { grid-area: white; }
+  .board-frame { grid-area: frame; justify-self: center; }
+  .status-bar { grid-area: status; box-sizing: border-box; }
+  .game-options { grid-area: options; }
+  .control-btns { grid-area: controls; grid-template-columns: repeat(3, 1fr); }
+  .control-btns #install-btn { grid-column: span 3; }
+  /* contain: size so a long game scrolls inside the box instead of stretching the row */
+  .log-box { grid-area: log; align-self: stretch; max-height: none; contain: size; }
+}
+
 /* ── Responsive ── */
 @media (max-width: 1060px) {
   /* One column: the board first, then whose turn it is, then both players side by side —
