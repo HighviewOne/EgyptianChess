@@ -302,9 +302,10 @@ body::after {
   50%       { box-shadow: 0 0 36px rgba(245,213,116,1), 0 0 60px rgba(245,213,116,0.4); }
 }
 .ankh-counter {
-  font-size: 9px;
+  font-family: 'Cinzel', serif;   /* lining figures: Cormorant's old-style 1 reads as "ı" */
+  font-size: 10px;
   letter-spacing: 1.5px;
-  color: var(--sand-deep);
+  color: var(--sand-mid);
   text-align: center;
   text-transform: uppercase;
   margin-top: -6px;
@@ -613,7 +614,7 @@ body::after {
   outline-offset: 2px;
 }
 .control-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; align-content: start; }
-.control-btns #share-btn, .control-btns #install-btn { grid-column: span 2; }
+.control-btns #install-btn { grid-column: span 2; }
 .control-btns [hidden] { display: none; }
 .share-url {
   width: 100%; max-width: 440px;
@@ -828,6 +829,8 @@ body::after {
   display: flex; align-items: center; justify-content: center;
   z-index: 100;
   backdrop-filter: blur(4px);
+  padding: 16px;
+  box-sizing: border-box;
 }
 .dialog-overlay.hidden { display: none; }
 .dialog-box {
@@ -943,9 +946,25 @@ body::after {
 
 /* ── Responsive ── */
 @media (max-width: 1060px) {
-  .game-layout { grid-template-columns: 1fr; }
-  .panel { max-width: 540px; margin: 0 auto; }
-  .board-stage { width: 100%; }
+  /* One column: the board first, then whose turn it is, then both players side by side —
+     so the board fits on screen and each side's Ankh button stays near it */
+  .game-layout {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas: "frame frame" "status status" "black white" "options options" "controls controls";
+    gap: 12px;
+    max-width: 700px; margin: 0 auto;
+  }
+  .board-stage { display: contents; }
+  .board-frame { grid-area: frame; justify-self: center; }
+  .status-bar { grid-area: status; box-sizing: border-box; }
+  #black-panel { grid-area: black; }
+  #white-panel { grid-area: white; }
+  .game-options { grid-area: options; }
+  .controls-row { grid-area: controls; }
+  .panel-inner { padding: 16px 10px 14px; gap: 9px; }
+  .panel-name { padding-bottom: 8px; }
+  .panel-name .glyph { display: none; }
+  .captured { min-height: 30px; }
 }
 @media (max-width: 600px) {
   /* Fit the board, labels, and frame inside a phone screen */
@@ -955,8 +974,14 @@ body::after {
   .board-frame { padding: 10px; }
   .board-frame .frame-glyphs { display: none; }
   .header h1 { letter-spacing: 6px; font-size: 26px; }
-  .game-layout { gap: 10px; }
   .controls-row { flex-direction: column; }
+  .game-layout { gap: 10px 8px; }
+  .panel-name .realm { letter-spacing: 2px; }
+  .panel-name .side { font-size: 15px; letter-spacing: 3px; }
+  .ankh-btn { letter-spacing: 1px; padding-left: 26px; }
+  .ankh-btn::before { left: 8px; }
+  .ankh-counter { letter-spacing: 0.5px; }
+  .dialog-box { padding: 24px 18px; }
 }
 
 /* Scrollbars */
